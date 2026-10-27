@@ -98,14 +98,15 @@ h2.sub { font-size: 17px; color: var(--muted); }
 .chapter-head .facts b { color: var(--ink); font-weight: 600; }
 
 /* basics */
-.lessons { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
-.lesson { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 14px; }
-.lesson.nochart { grid-template-columns: minmax(0, 1fr); }
+.lessons { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--stage-sw, 119px) + 220px)), 1fr)); gap: 12px; }
+/* the chart sits beside the text while both fit, and drops below it on a narrow card */
+.lesson { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 14px; }
+.lesson > div { flex: 1 1 180px; min-width: 0; }
 .lesson h3 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
 .lesson h3 .num { font-family: var(--font-mono); color: var(--accent); margin-right: 6px; }
 .lesson p { margin: 0; font-size: 14px; }
-.lesson figure { margin: 0; display: grid; gap: 4px; justify-items: center; }
-.lesson figcaption { font-size: 12px; color: var(--muted); max-width: 110px; text-align: center; }
+.lesson figure { flex: none; max-width: 100%; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; justify-items: center; }
+.lesson figcaption { font-size: 12px; color: var(--muted); max-width: max(110px, var(--stage-sw, 119px)); text-align: center; }
 .path { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; padding: 14px 18px; }
 .path h3 { margin: 0 0 6px; font-size: 15px; }
 .path ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; }
@@ -113,15 +114,18 @@ h2.sub { font-size: 17px; color: var(--muted); }
 /* pattern entries */
 .entries { display: grid; gap: 14px; }
 .entry {
-  display: grid; grid-template-columns: 132px minmax(0, 1fr); gap: 18px;
+  display: grid; grid-template-columns: var(--stage-w, 178px) minmax(0, 1fr); gap: 18px;
   background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; padding: 16px;
   scroll-margin-top: calc(var(--toolbar-h, 96px) + 12px); transition: background-color 0.6s;
 }
 .entry.base { border-color: color-mix(in srgb, var(--accent) 45%, var(--rule)); }
 .entry.flash { background: var(--flash); }
-.entry-stage { position: sticky; top: calc(var(--toolbar-h, 96px) + 8px); align-self: start; display: grid; gap: 6px; justify-items: center; }
-.stage-wrap { position: relative; width: 132px; }
-.stage-wrap.small { width: 88px; }
+.entry-stage { position: sticky; top: calc(var(--toolbar-h, 96px) + 8px); align-self: start; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; justify-items: center; min-width: 0; }
+/* a card too narrow for the chart and the text side by side puts the chart on top */
+#list.stack .entry { grid-template-columns: minmax(0, 1fr); }
+#list.stack .entry-stage { position: static; }
+.stage-wrap { position: relative; width: var(--stage-w, 178px); max-width: 100%; }
+.stage-wrap.small { width: var(--stage-sw, 119px); }
 .stage-wrap > svg { display: block; width: 100%; height: auto; border-radius: 6px; cursor: zoom-in; }
 .stage-btns { position: absolute; right: 4px; top: 4px; display: grid; gap: 4px; }
 /* in upscroll the line and keys are on top, so the buttons move to the bottom */
@@ -143,14 +147,22 @@ h2.sub { font-size: 17px; color: var(--muted); }
 
 /* the big view */
 dialog.player {
-  box-sizing: border-box; width: min(520px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto;
+  box-sizing: border-box; width: min(var(--dlg-w, 520px), calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto;
   padding: 14px; border: 1px solid var(--rule); border-radius: 14px; background: var(--surface); color: var(--ink);
 }
 dialog.player::backdrop { background: rgba(8, 6, 14, 0.62); }
 .pl-head { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
 .pl-head h2 { font-size: 18px; line-height: 1.25; }
 .pl-sub { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
-.pl-stage { display: grid; justify-items: center; }
+.pl-stage { position: relative; display: grid; justify-items: center; }
+.pl-toast {
+  position: absolute; left: 50%; top: 12px; transform: translateX(-50%); z-index: 1; pointer-events: none; white-space: nowrap;
+  padding: 6px 14px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font: 600 14px var(--font-mono);
+  opacity: 0; transition: opacity 0.3s;
+}
+.pl-toast.show { opacity: 1; transition: none; }
+/* the toast keeps to the far end of the field, away from the line and the judgement */
+.pl-stage.up .pl-toast { top: auto; bottom: 12px; }
 .pl-stage svg { display: block; width: 100%; height: auto; border-radius: 8px; touch-action: none; user-select: none; -webkit-user-select: none; cursor: pointer; }
 .pl-bar { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; justify-content: center; margin-top: 12px; }
 .pl-ctl { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
@@ -161,7 +173,7 @@ dialog.player::backdrop { background: rgba(8, 6, 14, 0.62); }
 .pl-readout { margin: 10px 0 0; min-height: 1.5em; text-align: center; font: 500 12px var(--font-mono); color: var(--ink); }
 .pl-hint { margin: 4px 0 0; text-align: center; font-size: 13px; color: var(--muted); }
 .pl-step { font: 500 13px var(--font-mono); min-width: 9em; text-align: center; }
-.stage-cap { font-size: 12px; color: var(--muted); text-align: center; max-width: 132px; }
+.stage-cap { font-size: 12px; color: var(--muted); text-align: center; max-width: var(--stage-w, 178px); }
 .entry-body { min-width: 0; display: grid; align-content: start; gap: 10px; }
 .entry-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
 h3.name { margin: 0; font-size: 19px; font-weight: 600; line-height: 1.2; }
@@ -218,34 +230,32 @@ dl.gloss { margin: 0; display: grid; grid-template-columns: repeat(auto-fill, mi
 .notation { border-top: 1px solid var(--rule); padding-top: 18px; display: grid; gap: 8px; color: var(--muted); font-size: 14px; max-width: 72ch; }
 .notation p { margin: 0; }
 
-/* SVG parts, coloured from the theme tokens */
+/* SVG parts, coloured from the theme tokens; --z (set on each stage) is the size setting, so strokes and labels grow with the field */
 .st-bg { fill: var(--stage); }
-.st-edge { stroke: var(--lane-edge); stroke-width: 1; }
-.st-split { stroke: var(--hand-split); stroke-width: 1.5; }
+.st-edge { stroke: var(--lane-edge); stroke-width: calc(1px * var(--z, 1)); }
+.st-split { stroke: var(--hand-split); stroke-width: calc(1.5px * var(--z, 1)); }
 .st-hl { fill: var(--hl); }
 .st-judge { fill: var(--judge); }
-.st-ring { fill: none; stroke: var(--lane-edge); stroke-width: 1.5; }
+.st-ring { fill: none; stroke: var(--lane-edge); stroke-width: calc(1.5px * var(--z, 1)); }
 .st-ring.on { fill: var(--hit); stroke: var(--judge); }
 .st-note { fill: var(--note); }
 .st-note.missed { opacity: 0.3; }
 .st-note.cur { fill: var(--judge); }
-.st-key { fill: var(--muted); font: 600 10px var(--font-mono); text-anchor: middle; }
-.st-key.lg { font-size: 13px; }
+.st-key { fill: var(--muted); font: 600 calc(10px * var(--z, 1)) var(--font-mono); text-anchor: middle; }
+.st-key.lg { font-size: calc(13px * var(--z, 1)); }
 .st-key.on { fill: var(--judge); }
 .st-glow, .st-burst, .st-jt, .st-bpm { pointer-events: none; }
 .st-glow-stop { stop-color: var(--judge); }
-.st-burst { fill: none; stroke: var(--judge); stroke-width: 2; transform-box: fill-box; transform-origin: center; }
-.st-bpm { fill: var(--muted); font: 500 9px var(--font-mono); paint-order: stroke; stroke: var(--stage); stroke-width: 3px; stroke-linejoin: round; }
-.st-bpm.lg { font-size: 11px; }
-.st-jt { font: 700 20px var(--font-display); text-anchor: middle; transform-box: fill-box; transform-origin: center; paint-order: stroke; stroke: var(--stage); stroke-width: 4px; stroke-linejoin: round; }
+.st-burst { fill: none; stroke: var(--judge); stroke-width: calc(2px * var(--z, 1)); transform-box: fill-box; transform-origin: center; }
+.st-bpm { fill: var(--muted); font: 500 calc(9px * var(--z, 1)) var(--font-mono); paint-order: stroke; stroke: var(--stage); stroke-width: calc(3px * var(--z, 1)); stroke-linejoin: round; }
+.st-bpm.lg { font-size: calc(11px * var(--z, 1)); }
+.st-jt { font: 700 calc(20px * var(--z, 1)) var(--font-display); text-anchor: middle; transform-box: fill-box; transform-origin: center; paint-order: stroke; stroke: var(--stage); stroke-width: calc(4px * var(--z, 1)); stroke-linejoin: round; }
 .st-jt.j-perfect { fill: var(--judge); }
 .st-jt.j-great { fill: var(--lvl1); }
 .st-jt.j-miss { fill: var(--lvl3); }
 
 @media (max-width: 560px) {
-  .entry { grid-template-columns: 100px minmax(0, 1fr); gap: 12px; padding: 12px; }
-  .stage-wrap { width: 100px; }
-  .stage-cap { max-width: 100px; }
+  .entry { gap: 12px; padding: 12px; }
   .lessons { grid-template-columns: minmax(0, 1fr); }
 }
 /* on a phone the controls would take a third of the screen, so they scroll away with the page */
@@ -281,6 +291,8 @@ dl.gloss { margin: 0; display: grid; grid-template-columns: repeat(auto-fill, mi
     <span class="seg mono" role="group" id="speed-group"></span></span>
     <span class="pl-ctl" id="scroll-ctl"><span class="ctl-label" id="scroll-label" data-i18n="scrollLabel"></span>
     <span class="seg mono" role="group" id="scroll-group"></span></span>
+    <span class="pl-ctl" id="size-ctl"><span class="ctl-label" id="size-label" data-i18n="sizeLabel"></span>
+    <span class="seg mono" role="group" id="size-group"></span></span>
     <div class="seg" role="group" id="dir-group">
       <button type="button" id="dir-down" data-i18n="down"></button>
       <button type="button" id="dir-up" data-i18n="up"></button>
@@ -317,6 +329,8 @@ const UI = {
     levelAll: "Все уровни", tempoLabel: "Темп:", down: "Даунскролл", up: "Апскролл",
     toolbar: "Фильтр паттернов", modeGroup: "Подробность", viewGroup: "Вид", famGroup: "Семья", levelGroup: "Уровень", tempoGroup: "Темп", dirGroup: "Направление прокрутки",
     scrollLabel: "Прокрутка:", scrollGroup: "Скорость прокрутки", sound: "Звук ударов",
+    sizeLabel: "Размер:", sizeGroup: "Размер поля", scrollToast: "Прокрутка {v}×",
+    speedKeys: "F3 / F4 или − / + — прокрутка медленнее / быстрее.",
     pause: "Пауза", restart: "Сначала", expand: "Открыть крупно", close: "Закрыть", tryMode: "Сыграть самому",
     tryHint: "Жми D F J K, когда нота касается линии. На телефоне тапай по колонкам. Ещё раз «Сыграть самому» — вернуться к автоплею.",
     autoHint: "Это автоплей. Нажми D F J K или тапни по колонке, чтобы сыграть самому.",
@@ -349,6 +363,8 @@ const UI = {
     levelAll: "All levels", tempoLabel: "Tempo:", down: "Downscroll", up: "Upscroll",
     toolbar: "Pattern filter", modeGroup: "Detail level", viewGroup: "View", famGroup: "Family", levelGroup: "Level", tempoGroup: "Tempo", dirGroup: "Scroll direction",
     scrollLabel: "Scroll:", scrollGroup: "Scroll speed", sound: "Hitsounds",
+    sizeLabel: "Size:", sizeGroup: "Play field size", scrollToast: "Scroll {v}×",
+    speedKeys: "F3 / F4 or − / + make the scroll slower / faster.",
     pause: "Pause", restart: "Restart", expand: "Open large", close: "Close", tryMode: "Play it yourself",
     tryHint: "Press D F J K when a note touches the line. On a phone, tap the columns. Press “Play it yourself” again to go back to autoplay.",
     autoHint: "This is autoplay. Press D F J K or tap a column to play it yourself.",
@@ -422,15 +438,20 @@ let level = "all";
 const BASE_BPM = 150;
 const TEMPOS = [0.5, 0.75, 1, 1.25, 1.5];
 const SCROLLS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+// the size setting scales the whole play field; 100% is ZOOM × the first drawings (132 × 280 on a card)
+const SIZES = [1, 1.25, 1.5, 1.75, 2];
+const ZOOM = 1.35;
 const MISS = 0.14, PERFECT = 45, GREAT = 100; // judgement windows: seconds / ms of real time
-let tempo = 1, scroll = 1, sound = false, dir = "down";
+let tempo = 1, scroll = 1, size = 1, sound = false, dir = "down";
 try {
   const tv = Number(localStorage.getItem("patterns-tempo")); if (TEMPOS.includes(tv)) tempo = tv;
   const sv = Number(localStorage.getItem("patterns-scroll")); if (SCROLLS.includes(sv)) scroll = sv;
+  const zv = Number(localStorage.getItem("patterns-size")); if (SIZES.includes(zv)) size = zv;
   sound = localStorage.getItem("patterns-sound") === "1";
   dir = localStorage.getItem("patterns-dir") === "up" ? "up" : "down";
 } catch {}
 const RM = window.matchMedia("(prefers-reduced-motion: reduce)");
+const Z = () => ZOOM * size;
 let clipSeq = 0;
 
 const ICON = {
@@ -454,13 +475,14 @@ function iconBtn(cls, name) {
 }
 
 // ---- the stage (downscroll is drawn; upscroll mirrors the play field and keeps the text upright) ------------
-function stage(c, label, width, height, big = false) {
+function stage(c, label, width, height, big = false, z = 1) {
+  // z is the size setting: every length of the field (notes, gaps, spacing, line, labels) is multiplied by it
   const lane = (width - PAD * 2) / 4;
   // note size and row spacing: a note keeps a gap to the next note in its column, so dense jacks (1/6, 1/8) never merge
-  const r0 = big ? Math.min(18, lane * 0.25) : Math.min(10.5, lane * 0.42);
-  const gap = big ? 4 : 3;
-  const base = big ? 44 : width < 100 ? 20 : 26; // px per 1/4 beat at scroll 1
-  const lineY = height - (big ? 42 : 30);
+  const r0 = big ? Math.min(18 * z, lane * 0.25) : Math.min(10.5 * z, lane * 0.42);
+  const gap = (big ? 4 : 3) * z;
+  const base = (big ? 44 : width / z < 100 ? 20 : 26) * z; // px per 1/4 beat at scroll 1
+  const lineY = height - (big ? 42 : 30) * z;
   const rows = parse(c);
   const lastT = rows[rows.length - 1].t;
   const prev = {};
@@ -468,15 +490,16 @@ function stage(c, label, width, height, big = false) {
   for (const row of rows) for (const col of row.cols) { if (col in prev) dense = Math.min(dense, row.t - prev[col]); prev[col] = row.t; }
   // playback spreads the rows out (up to 1.6× the base) so a note fits between its neighbours; the rest comes off the radius
   const pstep = Math.min(base * 1.6, Math.max(base, (2 * r0 + gap) / dense));
-  const r = Math.max(4, Math.min(r0, (dense * pstep - gap) / 2));
-  const lead = r + 3.5;
+  const r = Math.max(4 * z, Math.min(r0, (dense * pstep - gap) / 2));
+  const lead = r + 3.5 * z;
   // the still picture fits the whole chart on the stage, so its notes may be a little smaller
   const step = Math.min(pstep, (lineY - lead * 2) / Math.max(1, lastT));
-  const rs = Math.max(4, Math.min(r, (dense * step - gap) / 2));
+  const rs = Math.max(4 * z, Math.min(r, (dense * step - gap) / 2));
   const up = dir === "up";
   const ty = (y, fs) => (up ? height - y + fs * 0.72 : y);
   const id = ++clipSeq;
   const svg = svgEl("svg", { width, height, viewBox: `0 0 ${width} ${height}`, role: "img", "aria-label": `${label}: ${notation(c)}` });
+  svg.style.setProperty("--z", z);
   const defs = svgEl("defs", {});
   const clip = svgEl("clipPath", { id: `clip-${id}` });
   const clipRect = svgEl("rect", { x: 0, y: 0, width, height: lineY + 1 });
@@ -487,27 +510,27 @@ function stage(c, label, width, height, big = false) {
   svg.append(defs, svgEl("rect", { class: "st-bg", x: 0, y: 0, width, height, rx: 6 }));
   const field = svgEl("g", up ? { transform: `matrix(1 0 0 -1 0 ${height})` } : {});
   svg.append(field);
-  for (const col of c.hl ?? []) field.append(svgEl("rect", { class: "st-hl", x: PAD + (col - 1) * lane, y: 0, width: lane, height: lineY + 14 }));
+  for (const col of c.hl ?? []) field.append(svgEl("rect", { class: "st-hl", x: PAD + (col - 1) * lane, y: 0, width: lane, height: lineY + 14 * z }));
   for (let i = 1; i < 4; i++) {
-    field.append(svgEl("line", { class: i === 2 ? "st-split" : "st-edge", x1: PAD + i * lane, y1: 0, x2: PAD + i * lane, y2: lineY + 14 }));
+    field.append(svgEl("line", { class: i === 2 ? "st-split" : "st-edge", x1: PAD + i * lane, y1: 0, x2: PAD + i * lane, y2: lineY + 14 * z }));
   }
-  const glowH = big ? 150 : 70;
+  const glowH = (big ? 150 : 70) * z;
   const glows = [0, 1, 2, 3].map((i) => {
     const g = svgEl("rect", { class: "st-glow", x: PAD + i * lane, y: lineY - glowH, width: lane, height: glowH, fill: `url(#glow-${id})`, opacity: 0 });
     field.append(g);
     return g;
   });
-  field.append(svgEl("rect", { class: "st-judge", x: PAD, y: lineY, width: width - PAD * 2, height: 2 }));
+  field.append(svgEl("rect", { class: "st-judge", x: PAD, y: lineY, width: width - PAD * 2, height: 2 * z }));
   const rings = [], keys = [], bursts = [];
-  const keyFs = big ? 13 : 10;
+  const keyFs = (big ? 13 : 10) * z;
   ["D", "F", "J", "K"].forEach((k, i) => {
     const cx = PAD + (i + 0.5) * lane;
-    const ring = svgEl("circle", { class: "st-ring", cx, cy: lineY + 1, r: r - 1 });
-    const burst = svgEl("circle", { class: "st-burst", cx, cy: lineY + 1, r, opacity: 0 });
+    const ring = svgEl("circle", { class: "st-ring", cx, cy: lineY + z, r: r - z });
+    const burst = svgEl("circle", { class: "st-burst", cx, cy: lineY + z, r, opacity: 0 });
     rings.push(ring);
     bursts.push(burst);
     field.append(ring, burst);
-    const key = svgEl("text", { class: big ? "st-key lg" : "st-key", x: cx, y: ty(height - (big ? 13 : 8), keyFs) });
+    const key = svgEl("text", { class: big ? "st-key lg" : "st-key", x: cx, y: ty(height - (big ? 13 : 8) * z, keyFs) });
     key.textContent = k;
     keys.push(key);
     svg.append(key);
@@ -525,17 +548,17 @@ function stage(c, label, width, height, big = false) {
   runClip.append(run);
   run.style.display = "none";
   field.append(still, runClip);
-  const bpmFs = big ? 11 : 9;
-  const bpm = svgEl("text", { class: big ? "st-bpm lg" : "st-bpm", x: PAD + 3, y: ty(big ? 18 : 13, bpmFs) });
+  const bpmFs = (big ? 11 : 9) * z;
+  const bpm = svgEl("text", { class: big ? "st-bpm lg" : "st-bpm", x: PAD + 3 * z, y: ty((big ? 18 : 13) * z, bpmFs) });
   bpm.style.visibility = "hidden";
   svg.append(bpm);
   let jt = null;
   if (big) {
-    jt = svgEl("text", { class: "st-jt", x: width / 2, y: ty(lineY - 96, 20), opacity: 0 });
+    jt = svgEl("text", { class: "st-jt", x: width / 2, y: ty(lineY - 96 * z, 20 * z), opacity: 0 });
     svg.append(jt);
   }
   return {
-    svg, c, rows, lane, r, lead, lineY, width, height, step, pstep, lastT, big, still, stillRows, run, rings, keys, glows, bursts, bpm, jt, clipRect,
+    svg, c, rows, lane, r, lead, lineY, width, height, z, step, pstep, lastT, big, still, stillRows, run, rings, keys, glows, bursts, bpm, jt, clipRect,
     P: Math.ceil((lastT + 2) / 4) * 4, // one loop, rounded up to whole beats, so the gap keeps the rhythm
     pool: null, u: 0, lit: [0, 0, 0, 0], litOn: [false, false, false, false], ui: null, meta: null,
   };
@@ -691,7 +714,7 @@ function frame(now) {
 }
 function bpmText(s) {
   const b = Math.round(BASE_BPM * tempo);
-  s.bpm.textContent = s.width < 100 ? `♩${b}` : `♩ ${b} BPM`;
+  s.bpm.textContent = s.width / s.z < 100 ? `♩${b}` : `♩ ${b} BPM`;
 }
 function start(s, tryMode = false) {
   if (RM.matches || !s) return;
@@ -703,7 +726,7 @@ function start(s, tryMode = false) {
   eng.held = [false, false, false, false];
   if (!s.pool || s.u !== s.pstep * scroll) buildPool(s);
   // autoplay starts from the still picture; "try it" lets the notes come in from the far end of the stage
-  eng.ph = tryMode ? -(s.lineY - s.r - 6) / s.u : -s.lead / s.u;
+  eng.ph = tryMode ? -(s.lineY - s.r - 6 * s.z) / s.u : -s.lead / s.u;
   placeAll(s, eng.ph);
   s.still.style.display = "none";
   s.run.style.display = "";
@@ -811,12 +834,12 @@ function statsText() {
 document.addEventListener("visibilitychange", () => { if (document.hidden) pause(); });
 
 // ---- shared controls (toolbar and big view) -----------------------------------------------------------------
-function chipButtons(list, key, fn) {
+function chipButtons(list, key, fn, fmt = (v) => `${v}×`) {
   return list.map((v) => {
     const b = document.createElement("button");
     b.type = "button";
     b.dataset[key] = v;
-    b.textContent = `${v}×`;
+    b.textContent = fmt(v);
     b.addEventListener("click", () => fn(v));
     return b;
   });
@@ -836,6 +859,7 @@ function syncControls() {
     b.title = `${Math.round(BASE_BPM * v)} BPM`;
   }
   for (const b of document.querySelectorAll("[data-scroll]")) b.setAttribute("aria-pressed", String(Number(b.dataset.scroll) === scroll));
+  for (const b of document.querySelectorAll("[data-size]")) b.setAttribute("aria-pressed", String(Number(b.dataset.size) === size));
   for (const b of document.querySelectorAll("[data-sound]")) {
     b.setAttribute("aria-pressed", String(sound));
     b.setAttribute("aria-label", t.sound);
@@ -855,10 +879,30 @@ function setScroll(v) {
   syncControls();
   const s = eng.s;
   if (s) {
+    // the chart keeps playing: the notes are rebuilt at the new spacing, and the ones already hit or missed stay so
+    const done = new Map();
+    for (const cp of s.pool ?? []) cp.rows.forEach((row, ri) => row.notes.forEach((nt) => { if (nt.done) done.set(`${cp.k}:${ri}:${nt.col}`, [nt.el.getAttribute("class"), nt.el.style.visibility]); }));
     buildPool(s);
     placeAll(s, eng.ph);
+    for (const cp of s.pool) cp.rows.forEach((row, ri) => row.notes.forEach((nt) => {
+      const d = done.get(`${cp.k}:${ri}:${nt.col}`);
+      if (d) { nt.done = true; nt.el.setAttribute("class", d[0]); nt.el.style.visibility = d[1]; }
+    }));
     draw(performance.now());
   }
+}
+const scrollStep = (dv) => {
+  const i = SCROLLS.indexOf(scroll) + dv;
+  if (i >= 0 && i < SCROLLS.length) setScroll(SCROLLS[i]);
+  toast(T().scrollToast.replace("{v}", scroll));
+};
+function setSize(v) {
+  if (v === size) return;
+  size = v;
+  save("patterns-size", v);
+  syncControls();
+  // the big view is rebuilt at once without stopping its chart; the page behind it waits until the view closes
+  if (dlg.open) { pl.stale = true; resizePlayer(); } else renderKeep();
 }
 function setSound(on) {
   sound = on;
@@ -869,9 +913,11 @@ function setSound(on) {
 
 // ---- a chart on the page --------------------------------------------------------------------------------------
 function stageBox(chart, label, small, sub0 = "") {
-  // the svg scales to its box (CSS sets the box width), so a later resize or rotation can't make it overflow
-  const width = small ? 88 : 132;
-  const height = small ? 190 : 280;
+  // the svg scales to its box (CSS sets the box width), so a later resize or rotation can't make it overflow;
+  // the size setting widens it, and it grows taller only while it still fits the screen below the toolbar
+  const z = Z();
+  const width = Math.round((small ? 88 : 132) * z);
+  const height = Math.min(Math.round((small ? 190 : 280) * z), stageCap());
   const t = T();
   const wrap = document.createElement("div");
   wrap.className = (small ? "stage-wrap small" : "stage-wrap") + (dir === "up" ? " up" : "");
@@ -897,7 +943,7 @@ function stageBox(chart, label, small, sub0 = "") {
     if (s && eng.s === s) stop();
     cur = c;
     sub = name;
-    s = stage(c, label, width, height);
+    s = stage(c, label, width, height, false, z);
     s.ui = ui;
     s.meta = { open };
     s.svg.addEventListener("click", () => open());
@@ -913,24 +959,33 @@ function stageBox(chart, label, small, sub0 = "") {
 
 // ---- the big view -------------------------------------------------------------------------------------------
 const dlg = document.getElementById("player");
-const pl = { s: null, opener: null, ptr: new Map() };
-function openPlayer(c, title, sub, tryMode = false, opener = null) {
+const pl = { s: null, opener: null, ptr: new Map(), args: null, stale: false, vw: 0, vh: 0, toastT: 0 };
+function openPlayer(c, title, sub, tryMode = false, opener = null, keep = null, fitH = 0) {
   stop();
   const t = T();
   pl.opener = opener;
-  const W = Math.round(Math.min(300, Math.max(200, window.innerWidth - 80)));
-  const H = Math.round(Math.min(560, Math.max(300, window.innerHeight - (window.innerWidth < 500 ? 400 : 330))));
-  const s = stage(c, title, W, H, true);
+  pl.args = [c, title, sub];
+  pl.vw = window.innerWidth;
+  pl.vh = window.innerHeight;
+  pl.ptr.clear();
+  // the lanes grow with the size setting until the screen runs out of width; the height is what the controls leave
+  const W = Math.round(Math.max(200, Math.min(288 * Z() + PAD * 2, window.innerWidth - 56)));
+  const H = Math.round(fitH || Math.min(1000, Math.max(300, window.innerHeight - (window.innerWidth < 500 ? 450 : 370))));
+  dlg.style.setProperty("--dlg-w", `${Math.max(520, W + 30)}px`);
+  const s = stage(c, title, W, H, true, (W - PAD * 2) / 288);
   pl.s = s;
   const rm = RM.matches;
+  const sizeBar = `<span class="pl-ctl"><span class="ctl-label">${esc(t.sizeLabel)}</span><span class="seg mono pl-size" role="group" aria-label="${esc(t.sizeGroup)}"></span></span>`;
   dlg.setAttribute("aria-label", `${title}${sub ? ` — ${sub}` : ""}`);
   dlg.innerHTML = `<div class="pl-head"><div><h2>${esc(title)}</h2><p class="pl-sub">${sub ? `${esc(sub)} · ` : ""}<code>${esc(notation(c))}</code></p></div></div>
-    <div class="pl-stage"></div>
-    ${rm ? `<div class="pl-bar"><span class="pl-step"></span></div><p class="pl-hint">${esc(t.rmNote)}</p>`
+    <div class="pl-stage${dir === "up" ? " up" : ""}"><div class="pl-toast" role="status"></div></div>
+    ${rm ? `<div class="pl-bar"><span class="pl-step"></span></div><div class="pl-bar">${sizeBar}</div><p class="pl-hint">${esc(t.rmNote)}</p>`
       : `<div class="pl-bar main"></div>
     <div class="pl-bar"><span class="pl-ctl"><span class="ctl-label">${esc(t.tempoLabel)}</span><span class="seg mono pl-tempo" role="group" aria-label="${esc(t.tempoGroup)}"></span></span>
-      <span class="pl-ctl"><span class="ctl-label">${esc(t.scrollLabel)}</span><span class="seg mono pl-scroll" role="group" aria-label="${esc(t.scrollGroup)}"></span></span></div>
+      <span class="pl-ctl"><span class="ctl-label">${esc(t.scrollLabel)}</span><span class="seg mono pl-scroll" role="group" aria-label="${esc(t.scrollGroup)}"></span></span>
+      ${sizeBar}</div>
     <p class="pl-readout"></p><p class="pl-hint"></p>`}`;
+  dlg.querySelector(".pl-size").append(...sizeChips());
   const close = iconBtn("close", "close");
   close.setAttribute("aria-label", t.close);
   close.addEventListener("click", () => dlg.close());
@@ -978,7 +1033,7 @@ function openPlayer(c, title, sub, tryMode = false, opener = null) {
         playB.classList.toggle("on", on);
         playB.setAttribute("aria-label", on ? T().pause : T().play);
         tryB.setAttribute("aria-pressed", String(eng.s === s && eng.try));
-        hint.textContent = eng.s === s && eng.try ? T().tryHint : T().autoHint;
+        hint.textContent = `${eng.s === s && eng.try ? T().tryHint : T().autoHint} ${T().speedKeys}`;
       }
       readout.textContent = eng.s === s && eng.try ? statsText() : "";
     };
@@ -999,17 +1054,62 @@ function openPlayer(c, title, sub, tryMode = false, opener = null) {
     });
     const up = (e) => { const col = pl.ptr.get(e.pointerId); if (col !== undefined) { pl.ptr.delete(e.pointerId); release(col); } };
     for (const ev of ["pointerup", "pointercancel", "pointerleave"]) s.svg.addEventListener(ev, up);
-    syncControls();
     s.ui("stop");
   }
+  syncControls();
   if (!dlg.open) dlg.showModal();
-  if (!rm) start(s, tryMode);
+  if (!fitH) {
+    // measure what the title and the controls take (with the longer hint), then give the stage the rest of the screen height
+    if (!rm) dlg.querySelector(".pl-hint").textContent = `${t.tryHint} ${t.speedKeys}`;
+    const chrome = dlg.scrollHeight - s.svg.getBoundingClientRect().height;
+    const want = Math.round(Math.min(1000, Math.max(300, window.innerHeight - 24 - chrome - (window.innerWidth < 500 ? 22 : 8))));
+    if (Math.abs(want - H) > 4) { openPlayer(c, title, sub, tryMode, opener, keep, want); return; }
+    if (!rm) s.ui("stop");
+  }
+  if (rm) return;
+  start(s, keep ? keep.try : tryMode);
+  if (keep) {
+    // a rebuilt view carries on from the same moment of the chart
+    eng.ph = eng.schedTo = keep.ph;
+    if (keep.stats) eng.stats = keep.stats;
+    placeAll(s, eng.ph);
+    draw(performance.now());
+    if (keep.paused) pause();
+    s.ui("stats");
+  }
+}
+function sizeChips() {
+  return chipButtons(SIZES, "size", setSize, (v) => `${Math.round(v * 100)}%`);
+}
+function resizePlayer() {
+  if (!dlg.open || !pl.s) return;
+  const keep = eng.s === pl.s ? { ph: eng.ph, try: eng.try, paused: eng.paused, stats: eng.stats } : null;
+  const focused = document.activeElement?.dataset?.size;
+  const top = dlg.scrollTop;
+  openPlayer(...pl.args, keep ? keep.try : false, pl.opener, keep);
+  dlg.scrollTop = top;
+  if (focused) dlg.querySelector(`[data-size="${focused}"]`)?.focus({ preventScroll: true });
+}
+function toast(text) {
+  const el = dlg.open && dlg.querySelector(".pl-toast");
+  if (!el) return;
+  el.textContent = text;
+  el.classList.add("show");
+  clearTimeout(pl.toastT);
+  pl.toastT = setTimeout(() => el.classList.remove("show"), 900);
 }
 dlg.addEventListener("close", () => {
   if (pl.s && eng.s === pl.s) stop();
   pl.s = null;
   pl.ptr.clear();
   dlg.replaceChildren();
+  const card = pl.opener?.closest?.(".entry")?.id;
+  if (pl.stale) {
+    // the size changed inside the big view: redraw the page now, and give focus back to the same card's button
+    pl.stale = false;
+    renderKeep();
+    if (card) pl.opener = document.querySelector(`#${card} .sbtn.expand`);
+  }
   if (pl.opener && pl.opener.isConnected) pl.opener.focus({ preventScroll: true });
 });
 // a click on the dimmed page around the box closes it
@@ -1019,7 +1119,20 @@ dlg.addEventListener("click", (e) => {
   if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) dlg.close();
 });
 const KEYS = { KeyD: 0, KeyF: 1, KeyJ: 2, KeyK: 3 };
+// F3 / F4 as in osu!mania, and − / + in the big view: slower / faster scroll, without stopping the chart
+const SPEED_KEYS = { F3: -1, F4: 1, Minus: -1, NumpadSubtract: -1, Equal: 1, NumpadAdd: 1 };
 document.addEventListener("keydown", (e) => {
+  const dv = SPEED_KEYS[e.code];
+  if (dv && !e.ctrlKey && !e.metaKey && !e.altKey && !RM.matches) {
+    const tag = e.target.tagName;
+    const typing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || e.target.isContentEditable;
+    const fkey = e.code === "F3" || e.code === "F4";
+    if (!typing && ((dlg.open && pl.s) || (fkey && eng.s && !eng.paused))) {
+      e.preventDefault();
+      scrollStep(dv);
+      return;
+    }
+  }
   const col = KEYS[e.code];
   if (col === undefined || e.ctrlKey || e.metaKey || e.altKey) return;
   const tag = e.target.tagName;
@@ -1373,6 +1486,10 @@ function render() {
   const label = (id, key) => document.getElementById(id).setAttribute("aria-label", t[key]);
   label("toolbar", "toolbar"); label("mode-group", "modeGroup"); label("view-group", "viewGroup");
   label("level-group", "levelGroup"); label("fam-chips", "famGroup"); label("speed-group", "tempoGroup"); label("scroll-group", "scrollGroup"); label("dir-group", "dirGroup");
+  label("size-group", "sizeGroup");
+  document.documentElement.style.setProperty("--stage-w", `${Math.round(132 * Z())}px`);
+  document.documentElement.style.setProperty("--stage-sw", `${Math.round(88 * Z())}px`);
+  syncStack();
   document.getElementById("view-group").hidden = mode === "general";
   const pressed = [["mode-general", mode === "general"], ["mode-detailed", mode === "detailed"], ["view-cards", view === "cards"],
     ["view-table", view === "table"], ["lang-ru", lang === "ru"], ["lang-en", lang === "en"], ["dir-down", dir === "down"], ["dir-up", dir === "up"]];
@@ -1407,13 +1524,41 @@ function render() {
 
 // jump targets and sticky charts sit just below the toolbar while it is sticky (it isn't on a phone)
 const toolbar = document.getElementById("toolbar");
+let barH = 0;
 const syncToolbar = () => {
   const sticky = getComputedStyle(toolbar).position === "sticky";
-  document.documentElement.style.setProperty("--toolbar-h", `${sticky ? Math.ceil(toolbar.getBoundingClientRect().height) : 0}px`);
+  barH = sticky ? Math.ceil(toolbar.getBoundingClientRect().height) : 0;
+  document.documentElement.style.setProperty("--toolbar-h", `${barH}px`);
 };
 if (window.ResizeObserver) new ResizeObserver(syncToolbar).observe(toolbar);
 window.addEventListener("resize", syncToolbar);
 syncToolbar();
+// the tallest a card's chart may be: it stays sticky beside the text, so its line and keys must stay on screen
+const stageCap = () => Math.max(Math.round(280 * ZOOM), window.innerHeight - barH - 40);
+// the chart goes above the text when the card can't hold both side by side with room to read
+function syncStack() {
+  const list = document.getElementById("list");
+  const pad = window.innerWidth <= 560 ? 38 : 52; // card padding, border and the gap
+  list.classList.toggle("stack", list.clientWidth - pad < Math.round(132 * Z()) + 280);
+}
+// keep the card the reader is looking at in place while the charts above it change height
+function renderKeep() {
+  const items = () => [...document.querySelectorAll("#list .chapter-head, #list .lesson, #list .entry")];
+  const stuck = window.scrollY > 0 && toolbar.getBoundingClientRect().top <= 1;
+  const i = stuck ? items().findIndex((el) => el.getBoundingClientRect().bottom > barH) : -1;
+  const y = i >= 0 ? items()[i].getBoundingClientRect().top : 0;
+  render();
+  const el = i >= 0 ? items()[i] : null;
+  if (el) window.scrollBy(0, el.getBoundingClientRect().top - y);
+}
+let resizeT = 0;
+window.addEventListener("resize", () => {
+  syncStack();
+  clearTimeout(resizeT);
+  resizeT = setTimeout(() => {
+    if (dlg.open && (Math.abs(window.innerWidth - pl.vw) > 40 || Math.abs(window.innerHeight - pl.vh) > 80)) resizePlayer();
+  }, 200);
+});
 
 const on = (id, fn) => document.getElementById(id).addEventListener("click", fn);
 const save = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
@@ -1426,7 +1571,8 @@ const speedGroup = document.getElementById("speed-group");
 speedGroup.append(...chipButtons(TEMPOS, "tempo", setTempo));
 const scrollGroup = document.getElementById("scroll-group");
 scrollGroup.append(...chipButtons(SCROLLS, "scroll", setScroll));
-document.getElementById("scroll-ctl").after(soundButton("chip"));
+document.getElementById("size-group").append(...sizeChips());
+document.getElementById("size-ctl").after(soundButton("chip"));
 on("dir-down", () => { dir = "down"; save("patterns-dir", dir); render(); });
 on("dir-up", () => { dir = "up"; save("patterns-dir", dir); render(); });
 on("lang-ru", () => { lang = "ru"; save("patterns-lang", lang); render(); });
