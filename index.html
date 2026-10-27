@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
 /* Layout: a field guide for 4K rice. Basics first, then one chapter per family; every pattern is an entry with a sticky
-   downscroll chart (variants as tabs, D F J K under the line) beside plain-language text; a family × pattern table as index. */
+   downscroll chart (variants as tabs, the column keys under the line, D F J K by default) beside plain-language text; a family × pattern table as index. */
 :root {
   --bg: #F4F2F8;
   --surface: #FFFFFF;
@@ -244,6 +244,16 @@ dl.gloss { margin: 0; display: grid; grid-template-columns: repeat(auto-fill, mi
 .st-key { fill: var(--muted); font: 600 calc(10px * var(--z, 1)) var(--font-mono); text-anchor: middle; }
 .st-key.lg { font-size: calc(13px * var(--z, 1)); }
 .st-key.on { fill: var(--judge); }
+/* changing the keys: the column that waits for its key is tinted, and its "?" takes the accent colour */
+.st-bind { fill: var(--accent); opacity: 0; pointer-events: none; }
+:root[data-bind="0"] .st-bind.c0, :root[data-bind="1"] .st-bind.c1, :root[data-bind="2"] .st-bind.c2, :root[data-bind="3"] .st-bind.c3 { opacity: 0.2; }
+:root[data-bind="0"] .st-key.c0, :root[data-bind="1"] .st-key.c1, :root[data-bind="2"] .st-key.c2, :root[data-bind="3"] .st-key.c3 { fill: var(--accent); }
+.keys-reset { font: 500 12px var(--font-body); color: var(--ink); background: var(--chip); border: 0; border-radius: 999px; padding: 6px 11px; cursor: pointer; }
+.keys-msg { flex-basis: 100%; max-width: 44ch; font-size: 12px; color: var(--muted); }
+.keys-msg:empty { display: none; }
+.keys-msg.err { color: var(--ink); font-weight: 600; }
+.pl-bar .keys-msg { text-align: center; }
+.controls .keys-ctl.compact .seg.mono button { padding: 5px 9px; letter-spacing: 0.04em; }
 .st-glow, .st-burst, .st-jt, .st-bpm { pointer-events: none; }
 .st-glow-stop { stop-color: var(--judge); }
 .st-burst { fill: none; stroke: var(--judge); stroke-width: calc(2px * var(--z, 1)); transform-box: fill-box; transform-origin: center; }
@@ -323,8 +333,8 @@ const UI = {
   ru: {
     eyebrow: "osu!mania · 4K rice · справочник",
     title: "Паттерны <em>4K</em>",
-    lede1: "Все паттерны 4K rice простыми словами: как выглядят, как их играть, где ошибаются и как тренировать. Схемы в {{даунскролле, как в игре по умолчанию: ноты падают сверху к линии внизу, первая нота — самая нижняя. Под линией|апскролле: ноты поднимаются снизу к линии наверху, первая нота — самая верхняя. Над линией}} подписаны клавиши <b>D F J K</b>. Направление меняется переключателем «Даунскролл / Апскролл».",
-    lede2: "Если ты только начинаешь, прочитай «Азы» — это пара минут. Нажми <b>▶</b> на схеме: ноты поедут к линии в ритме, как в игре, и колонка вспыхнет на каждом ударе. Нажми на саму схему, чтобы открыть её крупно и сыграть самому клавишами D F J K (на телефоне — тапами по колонкам). «Общие» показывает 6 больших семей, «Подробно» — все паттерны и варианты.",
+    lede1: "Все паттерны 4K rice простыми словами: как выглядят, как их играть, где ошибаются и как тренировать. Схемы в {{даунскролле, как в игре по умолчанию: ноты падают сверху к линии внизу, первая нота — самая нижняя. Под линией|апскролле: ноты поднимаются снизу к линии наверху, первая нота — самая верхняя. Над линией}} подписаны клавиши <b>{keys}</b>. Направление меняется переключателем «Даунскролл / Апскролл».",
+    lede2: "Если ты только начинаешь, прочитай «Азы» — это пара минут. Нажми <b>▶</b> на схеме: ноты поедут к линии в ритме, как в игре, и колонка вспыхнет на каждом ударе. Нажми на саму схему, чтобы открыть её крупно и сыграть самому клавишами <b>{keys}</b> (на телефоне — тапами по колонкам). Клавиши меняет кнопка «Клавиши», по умолчанию это D F J K. «Общие» показывает 6 больших семей, «Подробно» — все паттерны и варианты.",
     general: "Общие", detailed: "Подробно", cards: "Карточки", table: "Таблица", all: "Все",
     levelAll: "Все уровни", tempoLabel: "Темп:", down: "Даунскролл", up: "Апскролл",
     toolbar: "Фильтр паттернов", modeGroup: "Подробность", viewGroup: "Вид", famGroup: "Семья", levelGroup: "Уровень", tempoGroup: "Темп", dirGroup: "Направление прокрутки",
@@ -332,8 +342,14 @@ const UI = {
     sizeLabel: "Размер:", sizeGroup: "Размер поля", scrollToast: "Прокрутка {v}×",
     speedKeys: "F3 / F4 или − / + — прокрутка медленнее / быстрее.",
     pause: "Пауза", restart: "Сначала", expand: "Открыть крупно", close: "Закрыть", tryMode: "Сыграть самому",
-    tryHint: "Жми D F J K, когда нота касается линии. На телефоне тапай по колонкам. Ещё раз «Сыграть самому» — вернуться к автоплею.",
-    autoHint: "Это автоплей. Нажми D F J K или тапни по колонке, чтобы сыграть самому.",
+    tryHint: "Жми {keys}, когда нота касается линии. На телефоне тапай по колонкам. Ещё раз «Сыграть самому» — вернуться к автоплею.",
+    autoHint: "Это автоплей. Нажми {keys} или тапни по колонке, чтобы сыграть самому.",
+    keysLabel: "Клавиши:", keysChange: "Сменить клавиши колонок", keysReset: "Сбросить", keysResetTitle: "Вернуть D F J K",
+    keysBind: "Нажми клавишу для колонки {i} из 4. Esc — отмена.",
+    keysReserved: "{k} занята страницей или браузером (Esc, Tab, F1–F12, − / +, Shift, Ctrl, Alt) — выбери другую.",
+    keysDup: "{k} уже стоит на колонке {i} — выбери другую.", keysUnknown: "Эту клавишу страница не различает — выбери другую.",
+    keysDone: "Готово, клавиши теперь: {keys}", keysCancelled: "Отменено, клавиши прежние: {keys}", keysResetDone: "Клавиши снова D F J K.",
+    keysDef: " (по умолчанию D F J K)",
     judge: { perfect: "Perfect", great: "Great", miss: "Miss" }, acc: "Точность", combo: "Комбо",
     rmNote: "Анимация выключена: в системе включено «уменьшение движения». Листай ноты по шагам кнопками выше.",
     stepPrev: "Предыдущий шаг", stepNext: "Следующий шаг", stepOf: "Шаг {i} из {n}",
@@ -348,7 +364,7 @@ const UI = {
     pattern: "Паттерн", levelCol: "Уровень", skillCol: "Нагружает",
     legendHome: "<b>●</b> основная семья", legendAlso: "<b>○</b> встречается и здесь — нажми, чтобы открыть",
     nothing: "Под эти фильтры ничего не подходит.",
-    foot1: "<code>[12]</code> — джамп (2 ноты вместе), <code>[123]</code> — хенд (3), <code>[1234]</code> — квад (4), одна цифра — одиночная нота. Колонки 1–4 — клавиши D F J K; левая рука играет 1 и 2, правая — 3 и 4. Подсвеченная колонка — та, на которой держится паттерн.",
+    foot1: "<code>[12]</code> — джамп (2 ноты вместе), <code>[123]</code> — хенд (3), <code>[1234]</code> — квад (4), одна цифра — одиночная нота. Колонки 1–4 — клавиши {keys}{keysDef}; левая рука играет 1 и 2, правая — 3 и 4. Подсвеченная колонка — та, на которой держится паттерн.",
     foot2: "Названия паттернов в сообществе гуляют: одно и то же могут звать по-разному. Здесь собраны самые частые варианты, а в карточках есть подсказки «Не путать».",
     pageTitle: "Паттерны 4K rice",
     appLink: "Хочешь узнать дан карты, которую играешь? Скачай бесплатный <a href=\"{url}\">Lunacy mania</a>.",
@@ -357,8 +373,8 @@ const UI = {
   en: {
     eyebrow: "osu!mania · 4K rice · reference",
     title: "<em>4K</em> patterns",
-    lede1: "Every 4K rice pattern in plain words: what it looks like, how to play it, where people slip and how to train it. Charts are in {{downscroll, the game's default: notes fall from the top to the line at the bottom, and the first note is the lowest. The keys <b>D F J K</b> are marked under the line|upscroll: notes rise from the bottom to the line at the top, and the first note is the highest. The keys <b>D F J K</b> are marked above the line}}. The Downscroll / Upscroll switch flips the direction.",
-    lede2: "If you are just starting, read the Basics — it takes a couple of minutes. Press <b>▶</b> on a chart: the notes scroll to the line in rhythm, like in the game, and a column lights up on every hit. Press the chart itself to open it large and play it yourself on D F J K (on a phone, tap the columns). “General” shows the 6 big families, “Detailed” shows every pattern and variant.",
+    lede1: "Every 4K rice pattern in plain words: what it looks like, how to play it, where people slip and how to train it. Charts are in {{downscroll, the game's default: notes fall from the top to the line at the bottom, and the first note is the lowest. The keys <b>{keys}</b> are marked under the line|upscroll: notes rise from the bottom to the line at the top, and the first note is the highest. The keys <b>{keys}</b> are marked above the line}}. The Downscroll / Upscroll switch flips the direction.",
+    lede2: "If you are just starting, read the Basics — it takes a couple of minutes. Press <b>▶</b> on a chart: the notes scroll to the line in rhythm, like in the game, and a column lights up on every hit. Press the chart itself to open it large and play it yourself on <b>{keys}</b> (on a phone, tap the columns). The Keys button changes them; they are D F J K by default. “General” shows the 6 big families, “Detailed” shows every pattern and variant.",
     general: "General", detailed: "Detailed", cards: "Cards", table: "Table", all: "All",
     levelAll: "All levels", tempoLabel: "Tempo:", down: "Downscroll", up: "Upscroll",
     toolbar: "Pattern filter", modeGroup: "Detail level", viewGroup: "View", famGroup: "Family", levelGroup: "Level", tempoGroup: "Tempo", dirGroup: "Scroll direction",
@@ -366,8 +382,14 @@ const UI = {
     sizeLabel: "Size:", sizeGroup: "Play field size", scrollToast: "Scroll {v}×",
     speedKeys: "F3 / F4 or − / + make the scroll slower / faster.",
     pause: "Pause", restart: "Restart", expand: "Open large", close: "Close", tryMode: "Play it yourself",
-    tryHint: "Press D F J K when a note touches the line. On a phone, tap the columns. Press “Play it yourself” again to go back to autoplay.",
-    autoHint: "This is autoplay. Press D F J K or tap a column to play it yourself.",
+    tryHint: "Press {keys} when a note touches the line. On a phone, tap the columns. Press “Play it yourself” again to go back to autoplay.",
+    autoHint: "This is autoplay. Press {keys} or tap a column to play it yourself.",
+    keysLabel: "Keys:", keysChange: "Change the column keys", keysReset: "Reset", keysResetTitle: "Back to D F J K",
+    keysBind: "Press a key for column {i} of 4. Esc cancels.",
+    keysReserved: "{k} is taken by the page or the browser (Esc, Tab, F1–F12, − / +, Shift, Ctrl, Alt) — pick another.",
+    keysDup: "{k} is already on column {i} — pick another.", keysUnknown: "The page can't tell this key apart — pick another.",
+    keysDone: "Done, the keys are now: {keys}", keysCancelled: "Cancelled, the keys stay: {keys}", keysResetDone: "The keys are D F J K again.",
+    keysDef: " (D F J K by default)",
     judge: { perfect: "Perfect", great: "Great", miss: "Miss" }, acc: "Accuracy", combo: "Combo",
     rmNote: "Animation is off because reduced motion is turned on in your system. Step through the notes with the buttons above.",
     stepPrev: "Previous step", stepNext: "Next step", stepOf: "Step {i} of {n}",
@@ -382,7 +404,7 @@ const UI = {
     pattern: "Pattern", levelCol: "Level", skillCol: "Trains",
     legendHome: "<b>●</b> main family", legendAlso: "<b>○</b> also shows up here — press to open",
     nothing: "Nothing matches these filters.",
-    foot1: "<code>[12]</code> is a jump (2 notes together), <code>[123]</code> a hand (3), <code>[1234]</code> a quad (4), a single digit a single note. Columns 1–4 are the keys D F J K; the left hand plays 1 and 2, the right hand 3 and 4. The tinted column is the one the pattern leans on.",
+    foot1: "<code>[12]</code> is a jump (2 notes together), <code>[123]</code> a hand (3), <code>[1234]</code> a quad (4), a single digit a single note. Columns 1–4 are the keys {keys}{keysDef}; the left hand plays 1 and 2, the right hand 3 and 4. The tinted column is the one the pattern leans on.",
     foot2: "Pattern names drift in the community: the same thing can go by different names. This page uses the most common ones, and the cards have “Don't confuse” hints.",
     pageTitle: "4K rice patterns",
     appLink: "Want to know the dan of the map you play? Get the free <a href=\"{url}\">Lunacy mania</a>.",
@@ -450,6 +472,38 @@ try {
   sound = localStorage.getItem("patterns-sound") === "1";
   dir = localStorage.getItem("patterns-dir") === "up" ? "up" : "down";
 } catch {}
+// ---- the column keys: KeyboardEvent.code, so any keyboard layout plays the same physical keys --------------------
+const KEY_DEF = ["KeyD", "KeyF", "KeyJ", "KeyK"];
+const KEY_SYM = {
+  Semicolon: ";", Quote: "'", Comma: ",", Period: ".", Slash: "/", Backslash: "\\", IntlBackslash: "<", BracketLeft: "[", BracketRight: "]",
+  Backquote: "`", Space: "Space", Enter: "Enter", Backspace: "Backspace", CapsLock: "Caps", ContextMenu: "Menu",
+  ArrowLeft: "←", ArrowDown: "↓", ArrowUp: "↑", ArrowRight: "→", Home: "Home", End: "End", PageUp: "PgUp", PageDown: "PgDn", Insert: "Ins", Delete: "Del",
+  NumpadDecimal: "Num .", NumpadMultiply: "Num *", NumpadDivide: "Num /", NumpadEnter: "Num Enter", NumpadEqual: "Num =", NumpadComma: "Num ,",
+  NumpadSubtract: "Num −", NumpadAdd: "Num +", Minus: "−", Equal: "=", Escape: "Esc", Tab: "Tab",
+  ShiftLeft: "Shift", ShiftRight: "Shift", ControlLeft: "Ctrl", ControlRight: "Ctrl", AltLeft: "Alt", AltRight: "Alt", MetaLeft: "Meta", MetaRight: "Meta",
+};
+const keyName = (code) => KEY_SYM[code] ?? (/^Key[A-Z]$/.test(code) ? code.slice(3) : /^Digit\d$/.test(code) ? code.slice(5)
+  : /^Numpad\d$/.test(code) ? `Num ${code.slice(6)}` : String(code).replace(/^Intl/, ""));
+// what the stage writes under the line: the same name, a little shorter where a lane is narrow
+const keyStage = (code) => (code ? keyName(code).replace(/^Num /, "N").replace(/^Backspace$/, "Bksp") : "?");
+// keys the page or the browser already uses (the speed keys, Esc, Tab, F-keys) and modifiers alone can't play a column
+const KEY_RESERVED = /^(Escape|Tab|F\d{1,2}|Minus|Equal|NumpadSubtract|NumpadAdd|(Shift|Control|Alt|Meta|OS)(Left|Right)?|AltGraph|Fn|FnLock)$/;
+const keyBad = (code) => (!/^[A-Za-z0-9]{2,24}$/.test(code || "") || code === "Unidentified" ? T().keysUnknown
+  : KEY_RESERVED.test(code) ? T().keysReserved.replace("{k}", keyName(code)) : "");
+let pkeys = KEY_DEF.slice();
+try {
+  const kv = JSON.parse(localStorage.getItem("patterns-keys") || "null");
+  if (Array.isArray(kv) && kv.length === 4 && kv.every((c) => typeof c === "string" && !keyBad(c)) && new Set(kv).size === 4) pkeys = kv;
+} catch {}
+const keysText = () => pkeys.map(keyName).join(" ");
+const keysDefault = () => pkeys.every((c, i) => c === KEY_DEF[i]);
+// {keys} in a text is the chosen keys; {keysDef} adds "(D F J K by default)" once they differ from the default.
+// It runs before D(), whose {{down|up}} pattern can't hold braces of its own
+const KS = (s, html = false) => (typeof s !== "string" ? s
+  : s.replaceAll("{keys}", html ? esc(keysText()) : keysText()).replaceAll("{keysDef}", keysDefault() ? "" : T().keysDef));
+// binding: bind = { i: the column waiting for a key, codes: the keys picked so far, err: why the last key was refused }
+let bind = null, keyMsg = "", keyMsgT = 0, bindKeyAt = 0, bindEscAt = 0;
+const bindDown = new Set();
 const RM = window.matchMedia("(prefers-reduced-motion: reduce)");
 const Z = () => ZOOM * size;
 let clipSeq = 0;
@@ -511,6 +565,8 @@ function stage(c, label, width, height, big = false, z = 1) {
   const field = svgEl("g", up ? { transform: `matrix(1 0 0 -1 0 ${height})` } : {});
   svg.append(field);
   for (const col of c.hl ?? []) field.append(svgEl("rect", { class: "st-hl", x: PAD + (col - 1) * lane, y: 0, width: lane, height: lineY + 14 * z }));
+  // while the keys are being changed, the column waiting for its key lights up (see :root[data-bind])
+  for (let i = 0; i < 4; i++) field.append(svgEl("rect", { class: `st-bind c${i}`, x: PAD + i * lane, y: 0, width: lane, height }));
   for (let i = 1; i < 4; i++) {
     field.append(svgEl("line", { class: i === 2 ? "st-split" : "st-edge", x1: PAD + i * lane, y1: 0, x2: PAD + i * lane, y2: lineY + 14 * z }));
   }
@@ -523,15 +579,18 @@ function stage(c, label, width, height, big = false, z = 1) {
   field.append(svgEl("rect", { class: "st-judge", x: PAD, y: lineY, width: width - PAD * 2, height: 2 * z }));
   const rings = [], keys = [], bursts = [];
   const keyFs = (big ? 13 : 10) * z;
-  ["D", "F", "J", "K"].forEach((k, i) => {
+  const shown = keyShown();
+  [0, 1, 2, 3].forEach((i) => {
     const cx = PAD + (i + 0.5) * lane;
     const ring = svgEl("circle", { class: "st-ring", cx, cy: lineY + z, r: r - z });
     const burst = svgEl("circle", { class: "st-burst", cx, cy: lineY + z, r, opacity: 0 });
     rings.push(ring);
     bursts.push(burst);
     field.append(ring, burst);
-    const key = svgEl("text", { class: big ? "st-key lg" : "st-key", x: cx, y: ty(height - (big ? 13 : 8) * z, keyFs) });
-    key.textContent = k;
+    const ky = height - (big ? 13 : 8) * z;
+    const key = svgEl("text", { class: `${big ? "st-key lg" : "st-key"} c${i}`, x: cx, y: ty(ky, keyFs),
+      "data-col": i, "data-w": lane, "data-fs": keyFs, "data-y": up ? height - ky : ky, "data-up": up ? 1 : 0 });
+    fitKey(key, keyStage(shown[i]));
     keys.push(key);
     svg.append(key);
   });
@@ -558,7 +617,7 @@ function stage(c, label, width, height, big = false, z = 1) {
     svg.append(jt);
   }
   return {
-    svg, c, rows, lane, r, lead, lineY, width, height, z, step, pstep, lastT, big, still, stillRows, run, rings, keys, glows, bursts, bpm, jt, clipRect,
+    svg, c, rows, lane, r, lead, lineY, width, height, z, step, pstep, dense, gap, lastT, big, still, stillRows, run, rings, keys, glows, bursts, bpm, jt, clipRect,
     P: Math.ceil((lastT + 2) / 4) * 4, // one loop, rounded up to whole beats, so the gap keeps the rhythm
     pool: null, u: 0, lit: [0, 0, 0, 0], litOn: [false, false, false, false], ui: null, meta: null,
   };
@@ -612,15 +671,20 @@ function stopSounds() {
 // ---- the player: one stage plays at a time ------------------------------------------------------------------
 const eng = { s: null, raf: 0, ph: 0, last: 0, paused: true, try: false, schedTo: 0, pending: [], held: [false, false, false, false], stats: null };
 const UPS = () => (BASE_BPM * tempo) / 15; // grid steps per second
+// px per grid step, as in osu!mania: the notes fly at a speed set by the scroll (and the size) alone, so a faster
+// tempo brings the rows closer together instead of moving them faster (u × UPS = pstep × scroll × BASE_BPM / 15)
+const rowPx = (s) => (s.pstep * scroll) / tempo;
 const io = window.IntersectionObserver ? new IntersectionObserver((es) => {
   for (const e of es) if (!e.isIntersecting && eng.s && eng.s.svg === e.target && !eng.s.big) stop();
 }) : null;
 
 function buildPool(s) {
   // a few copies of the chart scroll by; a copy that has left the stage moves to the back of the queue
-  const u = s.pstep * scroll;
+  const u = rowPx(s);
   const n = Math.ceil((s.height + s.r * 4) / (s.P * u)) + 2;
   s.u = u;
+  // where the rows come closer than at scroll 1 and tempo 1, the notes get smaller so one column's notes keep their gap
+  const nr = Math.max(4 * s.z, Math.min(s.r, (s.dense * u - s.gap) / 2));
   // rows stay in the queue until they are past the line by the whole stage end and the miss window
   s.tail = Math.max((s.height - s.lineY + s.r * 2) / u, (MISS * BASE_BPM * TEMPOS[TEMPOS.length - 1]) / 15 + 0.5);
   s.run.replaceChildren();
@@ -630,7 +694,7 @@ function buildPool(s) {
     const rows = s.rows.map((row) => ({
       t: row.t,
       notes: row.cols.map((col) => {
-        const el = svgEl("circle", { class: "st-note", cx: PAD + (col - 0.5) * s.lane, cy: s.lineY - row.t * u, r: s.r });
+        const el = svgEl("circle", { class: "st-note", cx: PAD + (col - 0.5) * s.lane, cy: s.lineY - row.t * u, r: nr });
         g.append(el);
         return { el, col, done: false };
       }),
@@ -724,7 +788,7 @@ function start(s, tryMode = false) {
   eng.s = s;
   eng.try = tryMode;
   eng.held = [false, false, false, false];
-  if (!s.pool || s.u !== s.pstep * scroll) buildPool(s);
+  if (!s.pool || s.u !== rowPx(s)) buildPool(s);
   // autoplay starts from the still picture; "try it" lets the notes come in from the far end of the stage
   eng.ph = tryMode ? -(s.lineY - s.r - 6 * s.z) / s.u : -s.lead / s.u;
   placeAll(s, eng.ph);
@@ -866,19 +930,23 @@ function syncControls() {
     b.title = t.sound;
     b.innerHTML = icon(sound ? "soundOn" : "soundOff");
   }
+  syncKeys();
 }
 function setTempo(v) {
   tempo = v;
   save("patterns-tempo", v);
   syncControls();
-  if (eng.s) { stopSounds(); eng.schedTo = eng.ph; bpmText(eng.s); }
+  if (eng.s) { stopSounds(); eng.schedTo = eng.ph; bpmText(eng.s); respace(); }
 }
 function setScroll(v) {
   scroll = v;
   save("patterns-scroll", v);
   syncControls();
+  respace();
+}
+function respace() {
   const s = eng.s;
-  if (s) {
+  if (s && s.u !== rowPx(s)) {
     // the chart keeps playing: the notes are rebuilt at the new spacing, and the ones already hit or missed stay so
     const done = new Map();
     for (const cp of s.pool ?? []) cp.rows.forEach((row, ri) => row.notes.forEach((nt) => { if (nt.done) done.set(`${cp.k}:${ri}:${nt.col}`, [nt.el.getAttribute("class"), nt.el.style.visibility]); }));
@@ -910,6 +978,130 @@ function setSound(on) {
   syncControls();
   if (on) { audio(); eng.schedTo = eng.ph; } else stopSounds();
 }
+
+// ---- changing the column keys (the toolbar and the big view share one binding) ---------------------------------
+// the key each column shows: while binding, the keys picked so far, null (a "?") on the column that waits, the old ones after it
+function keyShown() {
+  return [0, 1, 2, 3].map((i) => (!bind ? pkeys[i] : i < bind.i ? bind.codes[i] : i === bind.i ? null : pkeys[i]));
+}
+// a long name (Space, Num 1) gets a smaller font so it stays inside its lane
+function fitKey(el, text) {
+  el.textContent = text;
+  const w = Number(el.dataset.w), fs = Number(el.dataset.fs);
+  const f = Math.min(fs, (w * 0.92) / (Math.max(1, [...text].length) * 0.62));
+  el.style.fontSize = f < fs ? `${f.toFixed(2)}px` : "";
+  el.setAttribute("y", Number(el.dataset.y) + (el.dataset.up === "1" ? f * 0.72 : 0));
+}
+function syncKeys() {
+  const t = T();
+  const shown = keyShown();
+  const txt = shown.map((c) => (c ? keyName(c) : "?")).join(" ");
+  for (const el of document.querySelectorAll(".st-key[data-col]")) fitKey(el, keyStage(shown[Number(el.dataset.col)]));
+  if (bind) document.documentElement.dataset.bind = bind.i; else delete document.documentElement.dataset.bind;
+  for (const l of document.querySelectorAll("[data-keys-label]")) l.textContent = t.keysLabel;
+  for (const b of document.querySelectorAll("[data-keys]")) {
+    b.textContent = txt;
+    b.setAttribute("aria-pressed", String(!!bind));
+    b.setAttribute("aria-label", `${t.keysChange}: ${keysText()}`);
+    b.title = t.keysChange;
+  }
+  for (const b of document.querySelectorAll("[data-keys-reset]")) {
+    b.textContent = t.keysReset;
+    b.title = t.keysResetTitle;
+    b.hidden = keysDefault() && !bind;
+  }
+  const msg = bind ? `${bind.err ? `${bind.err} ` : ""}${t.keysBind.replace("{i}", bind.i + 1)}` : keyMsg;
+  for (const m of document.querySelectorAll("[data-keys-msg]")) {
+    m.textContent = msg;
+    m.classList.toggle("err", !!(bind && bind.err));
+  }
+}
+// the texts that name the keys (the intro, the footnote, the big view's hint)
+function syncKeyTexts() {
+  const t = T();
+  for (const node of document.querySelectorAll("[data-i18n]")) {
+    const s = t[node.dataset.i18n];
+    if (typeof s === "string" && s.includes("{keys")) node.innerHTML = D(KS(s, true));
+  }
+  if (dlg.open && pl.s?.ui && !RM.matches) pl.s.ui(eng.s === pl.s && !eng.paused ? "play" : "pause");
+}
+function keyNote(text) {
+  keyMsg = text;
+  clearTimeout(keyMsgT);
+  keyMsgT = setTimeout(() => { keyMsg = ""; syncKeys(); }, 3500);
+}
+function bindStart() {
+  if (bind) { bindEnd(false); return; }
+  // the chart stops moving while the keys change, so nothing is missed meanwhile
+  pause();
+  eng.held = [false, false, false, false];
+  if (eng.s) lights(eng.s, performance.now());
+  clearTimeout(keyMsgT);
+  keyMsg = "";
+  bind = { i: 0, codes: [], err: "" };
+  syncKeys();
+}
+function bindEnd(ok) {
+  if (!bind) return;
+  if (ok) {
+    pkeys = bind.codes;
+    save("patterns-keys", JSON.stringify(pkeys));
+  }
+  bind = null;
+  keyNote((ok ? T().keysDone : T().keysCancelled).replace("{keys}", keysText()));
+  syncKeys();
+  syncKeyTexts();
+}
+function keysReset(e) {
+  bind = null;
+  pkeys = KEY_DEF.slice();
+  try { localStorage.removeItem("patterns-keys"); } catch {}
+  keyNote(T().keysResetDone);
+  // the Reset button hides itself now, so the focus goes to the keys button next to it
+  e?.currentTarget?.closest(".keys-ctl")?.querySelector("[data-keys]")?.focus({ preventScroll: true });
+  syncKeys();
+  syncKeyTexts();
+}
+function keysCtl(extra = "") {
+  const w = document.createElement("span");
+  w.className = `pl-ctl keys-ctl ${extra}`;
+  w.innerHTML = `<span class="ctl-label" data-keys-label></span><span class="seg mono"><button type="button" data-keys></button></span>
+    <button type="button" class="keys-reset" data-keys-reset hidden></button><span class="keys-msg" data-keys-msg role="status"></span>`;
+  // Space or Enter on the focused button right after a binding key must not start a new binding
+  w.querySelector("[data-keys]").addEventListener("click", (e) => { if (e.detail === 0 && performance.now() - bindKeyAt < 400) return; bindStart(); });
+  w.querySelector("[data-keys-reset]").addEventListener("click", keysReset);
+  return w;
+}
+// capture phase: while binding, every key goes to the binding and nowhere else (not to the player, not to the dialog's Esc)
+document.addEventListener("keydown", (e) => {
+  if (!bind) return;
+  const mod = /^((Shift|Control|Alt|Meta|OS)(Left|Right)?|AltGraph)$/.test(e.code);
+  if (!mod && (e.ctrlKey || e.metaKey || e.altKey)) return; // browser shortcuts still work
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  bindDown.add(e.code);
+  bindKeyAt = performance.now();
+  if (e.repeat) return;
+  const t = T();
+  if (e.code === "Escape") { bindEscAt = performance.now(); bindEnd(false); return; }
+  const why = keyBad(e.code);
+  const dup = bind.codes.indexOf(e.code);
+  if (why) bind.err = why;
+  else if (dup >= 0) bind.err = t.keysDup.replace("{k}", keyName(e.code)).replace("{i}", dup + 1);
+  else {
+    bind.codes.push(e.code);
+    bind.i += 1;
+    bind.err = "";
+    if (bind.i === 4) { bindEnd(true); return; }
+  }
+  syncKeys();
+}, true);
+document.addEventListener("keyup", (e) => {
+  if (!bindDown.delete(e.code)) return;
+  bindKeyAt = performance.now();
+  e.preventDefault();
+  e.stopImmediatePropagation();
+}, true);
 
 // ---- a chart on the page --------------------------------------------------------------------------------------
 function stageBox(chart, label, small, sub0 = "") {
@@ -986,6 +1178,7 @@ function openPlayer(c, title, sub, tryMode = false, opener = null, keep = null, 
       ${sizeBar}</div>
     <p class="pl-readout"></p><p class="pl-hint"></p>`}`;
   dlg.querySelector(".pl-size").append(...sizeChips());
+  if (!rm) dlg.querySelector(".pl-size").closest(".pl-ctl").after(keysCtl());
   const close = iconBtn("close", "close");
   close.setAttribute("aria-label", t.close);
   close.addEventListener("click", () => dlg.close());
@@ -1033,7 +1226,7 @@ function openPlayer(c, title, sub, tryMode = false, opener = null, keep = null, 
         playB.classList.toggle("on", on);
         playB.setAttribute("aria-label", on ? T().pause : T().play);
         tryB.setAttribute("aria-pressed", String(eng.s === s && eng.try));
-        hint.textContent = `${eng.s === s && eng.try ? T().tryHint : T().autoHint} ${T().speedKeys}`;
+        hint.textContent = `${KS(eng.s === s && eng.try ? T().tryHint : T().autoHint)} ${T().speedKeys}`;
       }
       readout.textContent = eng.s === s && eng.try ? statsText() : "";
     };
@@ -1042,7 +1235,7 @@ function openPlayer(c, title, sub, tryMode = false, opener = null, keep = null, 
     tryB.addEventListener("click", () => start(s, !(eng.s === s && eng.try)));
     // tap or click a column: the first one switches to "try it", the rest are key presses
     s.svg.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0) return;
+      if (e.button !== 0 || bind) return;
       e.preventDefault();
       const rect = s.svg.getBoundingClientRect();
       const col = Math.floor(((e.clientX - rect.left) * (s.width / rect.width) - PAD) / s.lane);
@@ -1060,7 +1253,7 @@ function openPlayer(c, title, sub, tryMode = false, opener = null, keep = null, 
   if (!dlg.open) dlg.showModal();
   if (!fitH) {
     // measure what the title and the controls take (with the longer hint), then give the stage the rest of the screen height
-    if (!rm) dlg.querySelector(".pl-hint").textContent = `${t.tryHint} ${t.speedKeys}`;
+    if (!rm) dlg.querySelector(".pl-hint").textContent = `${KS(t.tryHint)} ${t.speedKeys}`;
     const chrome = dlg.scrollHeight - s.svg.getBoundingClientRect().height;
     const want = Math.round(Math.min(1000, Math.max(300, window.innerHeight - 24 - chrome - (window.innerWidth < 500 ? 22 : 8))));
     if (Math.abs(want - H) > 4) { openPlayer(c, title, sub, tryMode, opener, keep, want); return; }
@@ -1098,7 +1291,10 @@ function toast(text) {
   clearTimeout(pl.toastT);
   pl.toastT = setTimeout(() => el.classList.remove("show"), 900);
 }
+// Esc while the keys are being changed cancels the binding and leaves the big view open
+dlg.addEventListener("cancel", (e) => { if (bind || performance.now() - bindEscAt < 500) e.preventDefault(); });
 dlg.addEventListener("close", () => {
+  if (bind) bindEnd(false);
   if (pl.s && eng.s === pl.s) stop();
   pl.s = null;
   pl.ptr.clear();
@@ -1118,7 +1314,6 @@ dlg.addEventListener("click", (e) => {
   const r = dlg.getBoundingClientRect();
   if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) dlg.close();
 });
-const KEYS = { KeyD: 0, KeyF: 1, KeyJ: 2, KeyK: 3 };
 // F3 / F4 as in osu!mania, and − / + in the big view: slower / faster scroll, without stopping the chart
 const SPEED_KEYS = { F3: -1, F4: 1, Minus: -1, NumpadSubtract: -1, Equal: 1, NumpadAdd: 1 };
 document.addEventListener("keydown", (e) => {
@@ -1133,8 +1328,8 @@ document.addEventListener("keydown", (e) => {
       return;
     }
   }
-  const col = KEYS[e.code];
-  if (col === undefined || e.ctrlKey || e.metaKey || e.altKey) return;
+  const col = pkeys.indexOf(e.code);
+  if (col < 0 || e.ctrlKey || e.metaKey || e.altKey) return;
   const tag = e.target.tagName;
   if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || e.target.isContentEditable) return;
   if (dlg.open) {
@@ -1146,12 +1341,15 @@ document.addEventListener("keydown", (e) => {
     press(col, e.timeStamp);
     return;
   }
-  // D F J K while a chart on the page plays: open it large in "try it" mode
+  // a column key while a chart on the page plays: open it large in "try it" mode
   if (eng.s && !eng.paused && eng.s.meta) { e.preventDefault(); eng.s.meta.open(true); }
 });
 document.addEventListener("keyup", (e) => {
-  const col = KEYS[e.code];
-  if (col !== undefined && dlg.open) release(col);
+  const col = pkeys.indexOf(e.code);
+  if (col < 0 || !dlg.open) return;
+  release(col);
+  // a column key on Space or Enter must not also press the button that has the focus
+  if (pl.s) e.preventDefault();
 });
 
 // ---- a pattern entry --------------------------------------------------------------------------------------
@@ -1475,10 +1673,11 @@ function renderTable(list) {
 // ---- controls -----------------------------------------------------------------------------------------------
 function render() {
   stop();
+  bind = null;
   const t = T();
   document.documentElement.lang = lang;
   document.title = t.pageTitle;
-  for (const node of document.querySelectorAll("[data-i18n]")) node.innerHTML = D(t[node.dataset.i18n]);
+  for (const node of document.querySelectorAll("[data-i18n]")) node.innerHTML = D(KS(t[node.dataset.i18n], true));
   const appLink = document.getElementById("app-link");
   appLink.hidden = !APP_URL;
   if (APP_URL) appLink.innerHTML = t.appLink.replace("{url}", esc(APP_URL));
@@ -1572,7 +1771,7 @@ speedGroup.append(...chipButtons(TEMPOS, "tempo", setTempo));
 const scrollGroup = document.getElementById("scroll-group");
 scrollGroup.append(...chipButtons(SCROLLS, "scroll", setScroll));
 document.getElementById("size-group").append(...sizeChips());
-document.getElementById("size-ctl").after(soundButton("chip"));
+document.getElementById("size-ctl").after(soundButton("chip"), keysCtl("compact"));
 on("dir-down", () => { dir = "down"; save("patterns-dir", dir); render(); });
 on("dir-up", () => { dir = "up"; save("patterns-dir", dir); render(); });
 on("lang-ru", () => { lang = "ru"; save("patterns-lang", lang); render(); });
