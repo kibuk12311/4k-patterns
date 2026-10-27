@@ -217,12 +217,41 @@ table.matrix { border-collapse: collapse; min-width: 760px; width: 100%; font-si
 .legend b { color: var(--accent); font-weight: 400; }
 
 /* glossary */
-.gloss-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.gloss-tools input {
-  font: 14px var(--font-body); color: var(--ink); background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 7px 10px; min-width: 0; width: 280px; max-width: 100%;
-}
 dl.gloss { margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px 24px; }
-.gloss div { display: grid; gap: 2px; }
+.gloss div { display: grid; gap: 2px; scroll-margin-top: calc(var(--toolbar-h, 96px) + 16px); border-radius: 6px; transition: background-color 0.6s, box-shadow 0.6s; }
+.gloss div.flash, .manip-sec.flash, .manip-ex.flash { background: var(--flash); box-shadow: 0 0 0 6px var(--flash); }
+.manip-sec { scroll-margin-top: calc(var(--toolbar-h, 96px) + 12px); border-radius: 6px; transition: background-color 0.6s, box-shadow 0.6s; }
+.manip-ex { transition: background-color 0.6s, box-shadow 0.6s; }
+
+/* the search at the top of the toolbar: patterns, variants, glossary, playstyles, manip */
+.srch { position: relative; flex: 0 1 250px; min-width: 0; }
+.srch input {
+  box-sizing: border-box; width: 100%; font: 14px var(--font-body); color: var(--ink); background: var(--surface);
+  border: 1px solid var(--rule); border-radius: 999px; padding: 6px 30px 6px 32px; min-width: 0;
+}
+.srch input::placeholder { color: var(--muted); }
+.srch-ico { position: absolute; left: 11px; top: 50%; width: 15px; height: 15px; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.srch-key {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none;
+  font: 11px var(--font-mono); color: var(--muted); border: 1px solid var(--rule); border-radius: 4px; padding: 0 5px; line-height: 16px;
+}
+.srch input:focus ~ .srch-key, .srch input:not(:placeholder-shown) ~ .srch-key { display: none; }
+@media (hover: none) { .srch-key { display: none; } }
+.srch-list {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 6; box-sizing: border-box; width: min(440px, calc(100vw - 32px));
+  max-height: min(70vh, 470px); overflow: auto; overscroll-behavior: contain; background: var(--surface); border: 1px solid var(--rule);
+  border-radius: 10px; box-shadow: 0 12px 32px rgba(10, 8, 20, 0.18); padding: 6px;
+}
+.srch-g { font: 500 11px var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); padding: 8px 10px 3px; }
+.srch-opt { display: block; padding: 6px 10px; border-radius: 7px; cursor: pointer; font-size: 14px; line-height: 1.35; }
+.srch-opt:hover { background: var(--chip); }
+.srch-opt[aria-selected="true"] { background: var(--chip); box-shadow: inset 3px 0 0 var(--accent); }
+.srch-opt mark { background: color-mix(in srgb, var(--accent) 24%, transparent); color: inherit; border-radius: 3px; font-weight: 600; }
+.srch-ctx { color: var(--muted); }
+.srch-sub { display: block; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.srch-more, .srch-none { display: block; box-sizing: border-box; width: 100%; text-align: left; font: 13px var(--font-body); color: var(--muted); padding: 8px 10px; }
+.srch-more { background: none; border: 0; border-top: 1px solid var(--rule); margin-top: 4px; cursor: pointer; color: var(--accent); }
+.srch-more:hover { text-decoration: underline; }
 .gloss dt { font-weight: 600; font-size: 14px; }
 .gloss dt .en { font-family: var(--font-mono); font-weight: 400; font-size: 11px; color: var(--muted); margin-left: 6px; }
 .gloss dd { margin: 0; font-size: 14px; color: var(--muted); }
@@ -401,6 +430,9 @@ dl.gloss { margin: 0; display: grid; grid-template-columns: repeat(auto-fill, mi
 /* on a phone the controls would take a third of the screen, so they scroll away with the page */
 @media (max-width: 600px) {
   .controls { position: static; }
+  .srch { flex: 1 1 100%; }
+  .srch input { font-size: 16px; padding-block: 8px; }
+  .srch-list { width: 100%; max-height: min(60vh, 470px); }
 }
 @media (prefers-reduced-motion: reduce) {
   .play, .sbtn.play, .sbtn.restart, .sbtn.sound, #tempo-ctl, #scroll-ctl { display: none; }
@@ -417,6 +449,12 @@ dl.gloss { margin: 0; display: grid; grid-template-columns: repeat(auto-fill, mi
   </header>
 
   <div class="controls" role="toolbar" id="toolbar">
+    <div class="srch" role="search">
+      <svg class="srch-ico" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.4 10.4 14 14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <input type="search" id="srch-q" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="srch-list" autocomplete="off" spellcheck="false" enterkeyhint="go">
+      <kbd class="srch-key" aria-hidden="true">/</kbd>
+      <div class="srch-list" id="srch-list" role="listbox" hidden></div>
+    </div>
     <button type="button" class="rd-open" id="rd-open" hidden></button>
     <nav class="jump-links" id="jump-links"><a href="#styles" id="jl-styles" data-i18n="stylesLink" hidden></a><a href="#manip" id="jl-manip" data-i18n="manipLink" hidden></a></nav>
     <div class="seg" role="group" id="mode-group">
@@ -2647,7 +2685,9 @@ const UI = {
     homeNote: "Здесь его основное место.", inFam: "в семье «{f}»",
     alsoHere: "Встречается и здесь", alsoHereAbout: "Паттерны других семей, которые часто попадаются и тут. Карточка сразу открыта на том, как они выглядят в этой семье.",
     basics: "Азы", basicsAbout: "Короткий курс для тех, кто только пришёл в 4K. Дальше по странице все эти слова уже будут понятны.",
-    path: "С чего начать", glossary: "Словарик", glossaryAbout: "Все слова со страницы. Начни печатать, чтобы найти нужное.", glossarySearch: "Найти слово…",
+    path: "С чего начать", glossary: "Словарик", glossaryAbout: "Все слова со страницы. Нужное быстрее всего найти поиском наверху.",
+    search: "Найти паттерн или слово…", searchLabel: "Поиск по странице", searchGroups: ["Паттерны", "Варианты", "Словарь", "Стили", "Манип"],
+    searchMore: "ещё {n} — показать все", searchNone: "Ничего не нашлось. Попробуй начало слова или английское название.",
     pattern: "Паттерн", levelCol: "Уровень", skillCol: "Нагружает",
     legendHome: "<b>●</b> основная семья", legendAlso: "<b>○</b> встречается и здесь — нажми, чтобы открыть",
     nothing: "Под эти фильтры ничего не подходит.",
@@ -2690,7 +2730,9 @@ const UI = {
     homeNote: "This is its main home.", inFam: "in {f}",
     alsoHere: "Also shows up here", alsoHereAbout: "Patterns from other families that often turn up here too. Each card opens on how it looks in this family.",
     basics: "Basics", basicsAbout: "A short course for anyone new to 4K. After it, every word further down the page will make sense.",
-    path: "Where to start", glossary: "Glossary", glossaryAbout: "Every word on the page. Start typing to find one.", glossarySearch: "Find a word…",
+    path: "Where to start", glossary: "Glossary", glossaryAbout: "Every word on the page. The search at the top finds one fastest.",
+    search: "Find a pattern or a term…", searchLabel: "Search the page", searchGroups: ["Patterns", "Variants", "Glossary", "Styles", "Manip"],
+    searchMore: "{n} more — show all", searchNone: "Nothing found. Try the start of a word or the Russian name.",
     pattern: "Pattern", levelCol: "Level", skillCol: "Trains",
     legendHome: "<b>●</b> main family", legendAlso: "<b>○</b> also shows up here — press to open",
     nothing: "Nothing matches these filters.",
@@ -3884,33 +3926,18 @@ function renderCards(list) {
 function renderGlossary(list) {
   const t = T();
   if (!C.glossary?.length) return;
-  const wrap = document.createElement("div");
-  wrap.style.display = "grid";
-  wrap.style.gap = "14px";
-  const tools = document.createElement("div");
-  tools.className = "gloss-tools";
-  const input = document.createElement("input");
-  input.type = "search";
-  input.id = "gloss-q";
-  input.placeholder = t.glossarySearch;
-  input.setAttribute("aria-label", t.glossarySearch);
-  tools.append(input);
+  // the search at the top finds a term and scrolls here (g-<index in C.glossary>)
   const dl = document.createElement("dl");
   dl.className = "gloss";
   const terms = [...C.glossary].sort((a, b) => L(a.term).localeCompare(L(b.term), lang));
   for (const g of terms) {
     const d = document.createElement("div");
+    d.id = `g-${C.glossary.indexOf(g)}`;
     const other = lang === "ru" ? g.term.en : "";
     d.innerHTML = `<dt>${esc(L(g.term))}${other ? `<span class="en">${esc(other)}</span>` : ""}</dt><dd>${L(g.means)}</dd>`;
-    d.dataset.text = `${g.term.ru} ${g.term.en} ${L(g.means)}`.toLowerCase();
     dl.append(d);
   }
-  input.addEventListener("input", () => {
-    const q = input.value.trim().toLowerCase();
-    for (const d of dl.children) d.hidden = q && !d.dataset.text.includes(q);
-  });
-  wrap.append(tools, dl);
-  list.append(chapter(esc(t.glossary), [para(esc(t.glossaryAbout))], wrap));
+  list.append(chapter(esc(t.glossary), [para(esc(t.glossaryAbout))], dl));
 }
 
 function renderTable(list) {
@@ -4159,6 +4186,206 @@ document.addEventListener("click", (e) => {
   el.scrollIntoView({ behavior: RM.matches ? "auto" : "smooth", block: "start" });
 });
 
+// ---- the search at the top: cards, their variants, the glossary, playstyles and manip, in ru and en ---------------
+const srIn = document.getElementById("srch-q");
+const srList = document.getElementById("srch-list");
+const SR_MAX = 12;
+// lower case, ё as е, dashes as spaces: one character for one, so a match's place is its place in the original text
+const srNorm = (s) => {
+  const o = String(s ?? ""), l = o.toLowerCase();
+  return (l.length === o.length ? l : o).replace(/ё/g, "е").replace(/[-‐‑–—_]/g, " ");
+};
+const srPlain = (h) => new DOMParser().parseFromString(String(h ?? ""), "text/html").body.textContent;
+// "Чордджек 2/4 (жеки 2/4)" → ["Чордджек 2/4", "жеки 2/4"]
+const srParts = (s) => { const m = String(s ?? "").match(/^(.*?)\s*\(([^)]*)\)\s*$/); return m ? [m[1], m[2]] : [String(s ?? "")]; };
+let srIdx = null, srKey = "", srRes = [], srAct = -1, srAll = false;
+function srIndex() {
+  const key = `${lang}|${dir}`;
+  if (srIdx && srKey === key) return srIdx;
+  const other = lang === "ru" ? "en" : "ru";
+  // w: 0 the name as shown, 0.25 another name for it, 0.5 the other language's name, 3 a definition
+  const F = (s, w, main = false) => ({ s: String(s ?? ""), n: srNorm(s), w, main });
+  const names = (o) => [F(L(o), 0, true), F(D(o?.[other]), 0.5)];
+  // other names for a card: a glossary term that starts with the card's name ("Чордджек 2/4 (жеки 2/4)") names it too
+  const alias = new Map();
+  for (const g of C.glossary ?? []) {
+    const ps = [...srParts(g.term.ru), ...srParts(g.term.en)];
+    for (const p of PATTERNS) {
+      const base = [p.ru, p.en].map((x) => srNorm(srParts(x)[0]));
+      if (!ps.some((x) => base.some((b) => srNorm(x).startsWith(`${b} `)))) continue;
+      const own = new Set([p.ru, p.en].map(srNorm));
+      alias.set(p.en, [...(alias.get(p.en) ?? []), ...ps.filter((x) => !own.has(srNorm(x)))]);
+    }
+  }
+  const items = [];
+  for (const p of PATTERNS) {
+    items.push({ g: 0, main: p[lang], f: [F(p[lang], 0, true), F(p[other], 0.5), ...(alias.get(p.en) ?? []).map((a) => F(a, 0.25))], go: () => jumpTo(p) });
+    const own = new Set([p.ru, p.en].map(srNorm));
+    (p.variants ?? []).forEach((v, i) => {
+      if (!v.name || (own.has(srNorm(v.name.ru)) && own.has(srNorm(v.name.en)))) return;
+      items.push({ g: 1, main: L(v.name), ctx: p[lang], f: names(v.name), go: () => srVariant(p, i) });
+    });
+  }
+  (C.glossary ?? []).forEach((g, i) => items.push({ g: 2, main: L(g.term), f: [...names(g.term), F(srPlain(L(g.means)), 3)], go: () => srTerm(i) }));
+  const S = C.styles;
+  if (S) {
+    items.push({ g: 3, main: L(S.title), f: names(S.title), go: () => srTo(document.getElementById("styles")) });
+    for (const st of S.cards ?? []) items.push({ g: 3, main: L(st.name), f: names(st.name), go: () => srTo(document.getElementById(`st-${slug(st.id)}`), true) });
+  }
+  const M = C.manip;
+  if (M) {
+    items.push({ g: 4, main: L(M.title), f: names(M.title), go: () => srTo(document.getElementById("manip")) });
+    for (const s of M.sections ?? []) {
+      items.push({ g: 4, main: L(s.title), f: names(s.title), go: () => srTo(document.getElementById(`manip-${slug(s.id)}`), true) });
+      (s.examples ?? []).forEach((x, i) => items.push({ g: 4, main: L(x.name), ctx: L(s.title), f: names(x.name),
+        go: () => srTo(document.querySelectorAll(`#manip-${slug(s.id)} .manip-ex`)[i], true) }));
+    }
+  }
+  srKey = key;
+  return (srIdx = items);
+}
+// the best place a query matches: a name's start first, then a word's start, then anywhere, then a definition;
+// the 300-odd variants come after every card, term, style and manip part that matches, so they don't crowd them out
+function srMatch(it, q) {
+  let best = null;
+  const bias = it.g === 1 ? 2.25 : 0;
+  for (const f of it.f) {
+    const at = f.n.indexOf(q);
+    if (at < 0) continue;
+    const s = bias + f.w + (at === 0 ? 0 : /[\s(«"“'/.,:;]/.test(f.n[at - 1]) ? 1 : 2) * (f.w >= 3 ? 0.25 : 1);
+    if (!best || s < best.s) best = { s, f, at };
+  }
+  return best;
+}
+const srHl = (s, at, n) => `${esc(s.slice(0, at))}<mark>${esc(s.slice(at, at + n))}</mark>${esc(s.slice(at + n))}`;
+function srOpt(h, k, n) {
+  const { it, m } = h;
+  let sub = "";
+  if (!m.f.main) {
+    let s = m.f.s, at = m.at;
+    if (s.length > 90) {
+      const a = Math.max(0, at - 30), b = Math.min(s.length, at + n + 50);
+      s = `${a ? "…" : ""}${s.slice(a, b)}${b < s.length ? "…" : ""}`;
+      at = at - a + (a ? 1 : 0);
+    }
+    sub = `<span class="srch-sub">${srHl(s, at, n)}</span>`;
+  }
+  return `<div class="srch-opt" role="option" id="srch-o${k}" data-k="${k}" aria-selected="false"><span class="srch-main">${m.f.main ? srHl(it.main, m.at, n) : esc(it.main)}</span>${it.ctx ? `<span class="srch-ctx"> · ${esc(it.ctx)}</span>` : ""}${sub}</div>`;
+}
+function srRun() {
+  const q = srNorm(srIn.value).trim().replace(/\s+/g, " ");
+  if (!q) { srClose(); return; }
+  const t = T();
+  const hits = [];
+  srIndex().forEach((it, i) => { const m = srMatch(it, q); if (m) hits.push({ it, m, i }); });
+  hits.sort((a, b) => a.m.s - b.m.s || a.it.g - b.it.g || a.i - b.i);
+  const shown = srAll ? hits : hits.slice(0, SR_MAX);
+  srRes = [];
+  const html = [];
+  t.searchGroups.forEach((name, g) => {
+    const grp = shown.filter((h) => h.it.g === g);
+    if (!grp.length) return;
+    html.push(`<div role="group" aria-labelledby="srch-g${g}"><div class="srch-g" id="srch-g${g}">${esc(name)}</div>`);
+    for (const h of grp) html.push(srOpt(h, srRes.push(h) - 1, q.length));
+    html.push("</div>");
+  });
+  if (!hits.length) html.push(`<div class="srch-none" role="status">${esc(t.searchNone)}</div>`);
+  if (hits.length > shown.length) html.push(`<button type="button" class="srch-more" tabindex="-1" data-more>${esc(t.searchMore.replace("{n}", hits.length - shown.length))}</button>`);
+  srList.innerHTML = html.join("");
+  srAct = srRes.length ? 0 : -1;
+  srList.hidden = false;
+  srIn.setAttribute("aria-expanded", "true");
+  srMark();
+}
+function srClose() {
+  srList.hidden = true;
+  srIn.setAttribute("aria-expanded", "false");
+  srIn.removeAttribute("aria-activedescendant");
+  srAct = -1;
+  srAll = false;
+}
+function srMark() {
+  for (const o of srList.querySelectorAll(".srch-opt")) o.setAttribute("aria-selected", String(Number(o.dataset.k) === srAct));
+  const o = srAct >= 0 ? document.getElementById(`srch-o${srAct}`) : null;
+  if (o) { srIn.setAttribute("aria-activedescendant", o.id); o.scrollIntoView({ block: "nearest" }); } else srIn.removeAttribute("aria-activedescendant");
+}
+function srPick(k) {
+  const h = srRes[k];
+  if (!h) return;
+  srClose();
+  srIn.blur();
+  h.it.go();
+}
+function srTo(el, flash = false) {
+  if (!el) return;
+  el.scrollIntoView({ behavior: RM.matches ? "auto" : "smooth", block: "start" });
+  if (!flash) return;
+  // a long smooth scroll can take seconds: light the target up only once it has stopped moving
+  let last = NaN, still = 0;
+  const t0 = performance.now();
+  const wait = () => {
+    const top = el.getBoundingClientRect().top;
+    // stopped and on screen (a smooth scroll can start a little late, so stillness off screen does not count)
+    still = Math.abs(top - last) < 1 && top >= -1 && top < innerHeight ? still + 1 : 0;
+    last = top;
+    if (still < 3 && performance.now() - t0 < 5000) return setTimeout(wait, 60);
+    el.classList.add("flash");
+    setTimeout(() => el.classList.remove("flash"), 1400);
+  };
+  setTimeout(wait, 60);
+}
+// a variant: its card (jumpTo widens the filters), with that variant's tab picked
+function srVariant(p, i) {
+  jumpTo(p);
+  document.getElementById(`p-${slug(p.en)}`)?.querySelector(`.entry-body > .row button[data-i="${i}"]`)?.click();
+}
+// a term: the glossary shows only without a family or level filter, in the cards view, so those open up first
+function srTerm(i) {
+  if (!document.getElementById(`g-${i}`)) { view = "cards"; fam = "all"; level = "all"; render(); }
+  srTo(document.getElementById(`g-${i}`), true);
+}
+function srSync() {
+  const t = T();
+  srIn.placeholder = t.search;
+  srIn.setAttribute("aria-label", t.searchLabel);
+  srList.setAttribute("aria-label", t.searchLabel);
+  if (!srList.hidden) srRun();
+}
+srIn.addEventListener("input", () => { srAll = false; srRun(); });
+// back in the field, the last query's results come back
+srIn.addEventListener("focus", () => { if (srIn.value.trim()) srRun(); });
+srIn.addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== srIn) srClose(); }, 0));
+srIn.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    if (srList.hidden) { srRun(); return; }
+    if (srRes.length) { srAct = (srAct + (e.key === "ArrowDown" ? 1 : -1) + srRes.length) % srRes.length; srMark(); }
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    if (!srList.hidden) srPick(srAct);
+  } else if (e.key === "Escape") {
+    e.preventDefault();
+    if (srIn.value) { srIn.value = ""; srClose(); } else { srClose(); srIn.blur(); }
+  }
+});
+// a press in the list keeps the focus in the field, so the list doesn't close under the pointer
+srList.addEventListener("mousedown", (e) => e.preventDefault());
+srList.addEventListener("click", (e) => {
+  if (e.target.closest("[data-more]")) { const k = srAct; srAll = true; srRun(); srAct = k; srMark(); return; }
+  const o = e.target.closest(".srch-opt");
+  if (o) srPick(Number(o.dataset.k));
+});
+// "/" anywhere on the page goes to the search (not while typing, binding keys, in the big view or playing a column on it)
+document.addEventListener("keydown", (e) => {
+  if (!(e.key === "/" || (e.code === "Slash" && !e.shiftKey)) || e.ctrlKey || e.metaKey || e.altKey || bind || dlg.open) return;
+  const tag = e.target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || e.target.isContentEditable) return;
+  if (pkeys.includes(e.code) && eng.s && !eng.paused) return;
+  e.preventDefault();
+  srIn.focus();
+  srIn.select();
+});
+
 // ---- controls -----------------------------------------------------------------------------------------------
 function render() {
   stop();
@@ -4210,6 +4437,7 @@ function render() {
   renderManip();
   document.getElementById("count").textContent = t.count(shown);
   syncControls();
+  srSync();
   // the map breakdown lives outside #list, so it stays while the cards change; it redraws only for language, direction and size
   if (typeof rdSync === "function") rdSync();
 }
