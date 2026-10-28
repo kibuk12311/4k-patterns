@@ -2978,7 +2978,7 @@ function audio() {
   if (actx.state === "suspended") actx.resume();
   return actx;
 }
-function tick(at, n = 1) {
+function tick(at, n = 1, T = -Infinity) {
   const ctx = actx;
   const src = ctx.createBufferSource();
   src.buffer = noiseBuf;
@@ -2998,16 +2998,26 @@ function tick(at, n = 1) {
   o.connect(og).connect(master);
   src.start(at); src.stop(at + 0.06);
   o.start(at); o.stop(at + 0.05);
-  eng.pending.push({ at, nodes: [src, o] });
+  eng.pending.push({ at, T, nodes: [src, o] });
   if (eng.pending.length > 64) eng.pending = eng.pending.filter((p) => p.at > ctx.currentTime - 0.1);
 }
 function stopSounds() {
-  if (actx) for (const p of eng.pending) if (p.at > actx.currentTime) for (const n of p.nodes) { try { n.stop(); } catch {} }
+  if (actx) for (const p of eng.pending) {
+    if (p.at > actx.currentTime) for (const n of p.nodes) { try { n.stop(); } catch {} }
+    else eng.heard = Math.max(eng.heard, p.T); // the last row that has sounded
+  }
   eng.pending = [];
+}
+// the chart's clock was moved from outside (a song steers it): the hitsounds queued on the old clock that have not
+// started are dropped and queued again from the new place, a row passed in the last 60 ms without a sound sounds at
+// once, and a row whose sound has started is never queued twice
+function reclock() {
+  stopSounds();
+  eng.schedTo = Math.max(eng.heard, eng.ph - 0.06 * UPS());
 }
 
 // ---- the player: one stage plays at a time ------------------------------------------------------------------
-const eng = { s: null, raf: 0, ph: 0, last: 0, paused: true, try: false, schedTo: 0, pending: [], held: [false, false, false, false], stats: null };
+const eng = { s: null, raf: 0, ph: 0, last: 0, paused: true, try: false, schedTo: 0, heard: 0, pending: [], held: [false, false, false, false], stats: null, gen: 0, follow: null };
 const UPS = () => (BASE_BPM * tempo) / 15; // grid steps per second
 // px per grid step, as in osu!mania: the notes fly at a speed set by the scroll (and the size) alone, so a faster
 // tempo brings the rows closer together instead of moving them faster (u × UPS = pstep × scroll × BASE_BPM / 15)
@@ -3081,7 +3091,7 @@ function schedule(s, ph, ups) {
   for (let k = Math.max(0, Math.floor(eng.schedTo / s.P)); k * s.P <= horizon; k++) {
     for (const row of s.rows) {
       const T0 = k * s.P + row.t;
-      if (T0 > eng.schedTo && T0 <= horizon) tick(actx.currentTime + Math.max(0, (T0 - ph) / ups), row.cols.length);
+      if (T0 > eng.schedTo && T0 <= horizon) tick(actx.currentTime + Math.max(0, (T0 - ph) / ups), row.cols.length, T0);
     }
   }
   eng.schedTo = horizon;
@@ -3111,6 +3121,7 @@ function draw(now) {
 function frame(now) {
   eng.ph += Math.min(0.1, Math.max(0, (now - eng.last) / 1000)) * UPS();
   eng.last = now;
+  eng.follow?.(now); // a song playing along steers the chart's clock (the map breakdown)
   draw(now);
   eng.raf = requestAnimationFrame(frame);
 }
@@ -3146,6 +3157,8 @@ function resume() {
   eng.paused = false;
   eng.last = performance.now();
   eng.schedTo = eng.ph;
+  eng.heard = eng.ph; // the rows behind the chart's place are past
+  eng.gen += 1; // the chart starts again from its own place: a song playing along has to find it
   if (sound) audio();
   eng.raf = requestAnimationFrame(frame);
   eng.s.ui?.("play");
@@ -3274,7 +3287,7 @@ function setTempo(v) {
   tempo = v;
   save("patterns-tempo", v);
   syncControls();
-  if (eng.s) { stopSounds(); eng.schedTo = eng.ph; bpmText(eng.s); respace(); }
+  if (eng.s) { stopSounds(); eng.schedTo = Math.max(eng.ph, eng.heard); bpmText(eng.s); respace(); } // a row that has sounded is not queued again
 }
 function setScroll(v) {
   scroll = v;
@@ -3314,7 +3327,8 @@ function setSound(on) {
   sound = on;
   save("patterns-sound", on ? "1" : "0");
   syncControls();
-  if (on) { audio(); eng.schedTo = eng.ph; } else stopSounds();
+  stopSounds();
+  if (on) { audio(); eng.schedTo = Math.max(eng.ph, eng.heard); }
 }
 
 // ---- changing the column keys (the toolbar and the big view share one binding) ---------------------------------
@@ -3598,10 +3612,13 @@ function openPlayer(c, title, sub, tryMode = false, opener = null, keep = null, 
     if (!rm) s.ui("stop");
   }
   if (rm) return;
+  if (keep) stopSounds(); // the rows the old view has sounded (start() forgets them)
+  const heard = eng.heard;
   start(s, keep ? keep.try : tryMode);
   if (keep) {
     // a rebuilt view carries on from the same moment of the chart
-    eng.ph = eng.schedTo = keep.ph;
+    eng.ph = keep.ph;
+    eng.schedTo = eng.heard = Math.max(keep.ph, heard);
     if (keep.stats) eng.stats = keep.stats;
     placeAll(s, eng.ph);
     draw(performance.now());
@@ -4520,8 +4537,10 @@ const RD_T = {
     partOf: "Кусок {i} из {n}", prev: "Предыдущий кусок", next: "Следующий кусок",
     like: "Похоже на: ", likeShort: "≈ ", why: "Почему:", variant: "На карточке это вариант «{v}».", famVariant: "На карточке открою вид «{f}».",
     also: "Ещё в этом куске:", go: "→ к паттерну на странице", back: "← к разбору",
-    music: "Музыка", musicTitle: "Играть песню из .osz вместе с куском",
-    noMusic: "Песня звучит, когда открыт весь .osz: в одном .osu её нет.", musicMissing: "В архиве нет файла песни «{f}».", musicBad: "Этот браузер не смог проиграть песню из архива.",
+    music: "Музыка", musicTitle: "Играть песню вместе с куском",
+    noMusic: "В одном .osu нет песни. Перетащи сюда её файл (mp3, ogg…) — и она заиграет вместе с куском.", musicMissing: "В архиве нет файла песни «{f}».", musicBad: "Этот браузер не смог проиграть песню из архива.",
+    songOn: "♪ Песня: {f}", songBad: "Этот браузер не смог проиграть «{f}».", songBig: "Файл песни слишком большой.",
+    songFirst: "Сначала открой карту (.osu или .osz), потом перетащи её песню.",
     ln: "Долгие ноты (LN) на схеме показаны только началом.",
     tentNote: "Кусок неоднозначный: посмотри и паттерны ниже — они тут тоже есть.",
     breakText: "Перерыв: нот нет {s}.", calmText: "Спокойный кусок: нот мало, своего паттерна тут нет — можно отдышаться.",
@@ -4544,8 +4563,10 @@ const RD_T = {
     partOf: "Part {i} of {n}", prev: "Previous part", next: "Next part",
     like: "Looks like: ", likeShort: "≈ ", why: "Why:", variant: "On the card this is the “{v}” variant.", famVariant: "The card opens on how it looks in {f}.",
     also: "Also in this part:", go: "→ to the pattern", back: "← back to the breakdown",
-    music: "Music", musicTitle: "Play the song from the .osz along with the part",
-    noMusic: "The song plays when you open the whole .osz: a single .osu does not carry it.", musicMissing: "The archive has no song file “{f}”.", musicBad: "This browser could not play the song from the archive.",
+    music: "Music", musicTitle: "Play the song along with the part",
+    noMusic: "A single .osu has no song. Drop its audio file (mp3, ogg…) here and it plays along with the part.", musicMissing: "The archive has no song file “{f}”.", musicBad: "This browser could not play the song from the archive.",
+    songOn: "♪ Song: {f}", songBad: "This browser could not play “{f}”.", songBig: "This song file is too big.",
+    songFirst: "Open a map (.osu or .osz) first, then drop its song.",
     ln: "Long notes (LN) show only their heads on the chart.",
     tentNote: "This part is ambiguous: have a look at the patterns below too — they are in it as well.",
     breakText: "Break: no notes for {s}.", calmText: "Calm stretch: few notes and no pattern of its own — time to breathe.",
@@ -4566,7 +4587,9 @@ const TENTATIVE = 0.45; // below this confidence a part is shown as a guess
 const LOCK = '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="1.6" d="M4.5 7V5a3.5 3.5 0 0 1 7 0v2"/><rect x="2.5" y="7" width="11" height="7.5" rx="1.6" fill="currentColor"/></svg>';
 const rd = {
   state: "idle", set: null, diff: null, a: null, index: -1, err: null, sig: "", cards: null, kept: null, notice: null, busy: false,
-  audio: null, audioUrl: "", audioNote: "", music: true, chart: null, ps: null, back: false, inView: true, seekAt: 0, raf: 0, seq: 0,
+  audio: null, audioUrl: "", audioNote: "", music: true, chart: null, ps: null, back: false, inView: true, fol: null, raf: 0, seq: 0,
+  // a song file dropped for the open map set ({ set, file }), one dropped while a map reads, and a line about it
+  song: null, songNext: null, songMsg: null, songSeq: 0,
 };
 const reader = document.getElementById("reader");
 const rdBox = document.getElementById("rd-box");
@@ -4616,10 +4639,14 @@ function rdFail(err) {
   if (rd.kept) { rdRestore(); rd.kept = null; rd.notice = err; } else { rd.state = "error"; rd.err = err; rd.notice = null; }
   rdRender();
 }
-async function rdFile(file) {
+async function rdFile(file, song = null) {
   if (!READER || !file) return;
   const seq = ++rd.seq;
   rdLeave();
+  // the song of the map on screen stops at once (reading a big file can hold the page for a while)
+  rd.audio?.pause();
+  rd.fol = null;
+  rd.songNext = song;
   rdSnap();
   rd.err = null; rd.notice = null;
   if (file.size > 300 * 1024 * 1024) { rdFail({ ru: RD_T.ru.tooBig, en: RD_T.en.tooBig }); return; }
@@ -4633,10 +4660,16 @@ async function rdFile(file) {
   let set;
   try { set = await READER.openMapFile(file, file.name); } catch (e) { set = { ok: false, error: null, detail: String(e?.message ?? e) }; }
   if (seq !== rd.seq) return;
-  if (!set.ok) { rdFail(set.error ?? { ru: RD_T.ru.readFail, en: RD_T.en.readFail, detail: set.detail }); return; }
+  if (!set.ok) { rd.songNext = null; rdFail(set.error ?? { ru: RD_T.ru.readFail, en: RD_T.en.readFail, detail: set.detail }); return; }
   const ok = set.difficulties.filter((d) => d.ok);
   rd.busy = false;
   rd.set = set;
+  // a new map brings its own song: one dropped with it (or while it read), else the archive's; never the last map's
+  rd.songMsg = null;
+  const nx = rd.songNext;
+  rd.songNext = null;
+  if (nx && nx.size > 300 * 1024 * 1024) rd.songMsg = { k: "songBig" };
+  else if (nx) rd.song = { set, file: nx };
   if (ok.length > 1) { rd.a = null; rd.diff = null; rd.index = -1; rd.state = "choose"; rdRender(); return; }
   await rdAnalyze(ok[0]);
 }
@@ -4653,9 +4686,12 @@ async function rdAnalyze(d) {
   rd.index = -1;
   rd.a = a;
   rd.state = "result";
+  // a song file dropped for this map plays instead of the archive's
+  const own = rd.song?.set === rd.set ? rd.song : null;
+  if (own) rdSetAudio(URL.createObjectURL(own.file), () => rdSongLost(own));
   rdRender();
   // the song of an .osz, for playing a part in sync
-  if (rd.set?.kind === "osz" && d.meta?.audio) {
+  if (!own && rd.set?.kind === "osz" && d.meta?.audio) {
     let bytes = null;
     try { bytes = await READER.readSetFile(rd.set, d.meta.audio); } catch { bytes = null; }
     if (seq !== rd.seq) return;
@@ -4663,16 +4699,68 @@ async function rdAnalyze(d) {
     else {
       const ext = String(d.meta.audio).split(".").pop().toLowerCase();
       const type = { mp3: "audio/mpeg", ogg: "audio/ogg", wav: "audio/wav", m4a: "audio/mp4", flac: "audio/flac", opus: "audio/ogg" }[ext] ?? "";
-      rd.audioUrl = URL.createObjectURL(new Blob([bytes], { type }));
-      const el = new Audio();
-      el.preload = "auto";
-      el.src = rd.audioUrl;
-      el.addEventListener("error", () => { if (rd.audio !== el) return; rdDropAudio(); rd.audioNote = RT().musicBad; rdPartView(); });
-      rd.audio = el;
+      rdSetAudio(URL.createObjectURL(new Blob([bytes], { type })), () => { rdDropAudio(); rd.audioNote = RT().musicBad; rdPartView(); });
     }
     rdPartView();
   }
 }
+// the part's song from a blob URL; onBad runs if the browser cannot play it
+function rdSetAudio(url, onBad, el = null) {
+  if (!el) { el = new Audio(); el.preload = "auto"; el.src = url; }
+  el.addEventListener("error", () => { if (rd.audio === el) onBad(); });
+  rd.audioUrl = url;
+  rd.audio = el;
+  rd.fol = null;
+}
+// a dropped song that stopped playing: it is forgotten, and the part says why
+function rdSongLost(own) {
+  if (rd.song === own) rd.song = null;
+  rdDropAudio();
+  rd.audioNote = RT().songBad.replace("{f}", own.file.name);
+  rdSongShow();
+}
+// an audio file dropped (or picked): the open map's song from now on, in place of the archive's or an earlier one.
+// It is tried first: a file the browser cannot play leaves the current song as it is
+async function rdSong(file) {
+  if (!READER || !file) return;
+  if (rd.busy) { rd.songNext = file; return; } // for the map being read
+  const set = rd.state === "result" || rd.state === "choose" ? rd.set : null;
+  if (!set) { rd.state = "error"; rd.err = { ru: RD_T.ru.songFirst, en: RD_T.en.songFirst, first: true }; rd.notice = null; rdRender(); return; }
+  const n = ++rd.songSeq;
+  if (file.size > 300 * 1024 * 1024) { rd.songMsg = { k: "songBig" }; rdSongShow(); return; }
+  const url = URL.createObjectURL(file);
+  const el = new Audio();
+  el.preload = "auto";
+  const ok = await new Promise((res) => {
+    el.addEventListener("loadedmetadata", () => res(true), { once: true });
+    el.addEventListener("error", () => res(false), { once: true });
+    setTimeout(() => res(false), 8000);
+    el.src = url;
+  });
+  if (n !== rd.songSeq || rd.set !== set) { el.removeAttribute("src"); el.load(); URL.revokeObjectURL(url); return; } // another file meanwhile
+  if (!ok) { el.removeAttribute("src"); el.load(); URL.revokeObjectURL(url); rd.songMsg = { k: "songBad", f: file.name }; rdSongShow(); return; }
+  const own = (rd.song = { set, file });
+  rd.songMsg = null;
+  if (rd.state === "result" && rd.diff) {
+    // a part playing goes on: its song changes under it, and the chart finds the new song where it is
+    rdDropAudio();
+    rdSetAudio(url, () => rdSongLost(own), el);
+  } else { el.removeAttribute("src"); el.load(); URL.revokeObjectURL(url); } // the difficulty still to choose takes it
+  rdSongShow();
+}
+// what the reader says about a dropped song: by the part's music button, or under the map's title while no part plays
+function rdSongHtml() {
+  const m = rd.songMsg, own = rd.set && rd.song?.set === rd.set ? rd.song : null;
+  if (m) return rdErrHtml({ ru: RD_T.ru[m.k].replace("{f}", m.f ?? ""), en: RD_T.en[m.k].replace("{f}", m.f ?? "") });
+  return own && (rd.audio || rd.state === "choose") ? `<p class="rd-note">${esc(RT().songOn.replace("{f}", own.file.name))}</p>` : "";
+}
+function rdSongHead() {
+  const box = rdBox.querySelector("[data-song]");
+  if (!box) return;
+  box.innerHTML = rd.chart && document.querySelector("#rd-part .rd-text") ? "" : rdSongHtml();
+  box.hidden = !box.innerHTML;
+}
+function rdSongShow() { rdSongHead(); rdPartTail(); }
 function rdDropAudio() {
   if (rd.audio) { rd.audio.pause(); rd.audio.removeAttribute("src"); rd.audio.load?.(); }
   if (rd.audioUrl) URL.revokeObjectURL(rd.audioUrl);
@@ -4685,6 +4773,17 @@ function rdLeave() {
   rd.chart = null;
 }
 
+// a dropped or picked map opens (with a song file dropped along with it); a song file alone goes to the open map
+const RD_SONG = ["mp3", "ogg", "wav", "m4a", "flac", "opus"];
+const rdIsSong = (f) => RD_SONG.includes(String(f.name).split(".").pop().toLowerCase()) || (!/\.os[uz]$/i.test(f.name) && /^audio\//.test(f.type));
+function rdFiles(list) {
+  const files = [...(list ?? [])];
+  // a song folder dropped whole (picture, .osu, mp3) opens its .osu / .osz, not whatever file comes first
+  const map = files.find((f) => /\.os[uz]$/i.test(f.name)) ?? files.find((f) => !rdIsSong(f)), song = files.find(rdIsSong);
+  if (map) rdFile(map, song ?? null);
+  else if (song) rdSong(song);
+}
+
 // ---- drawing the section ----
 function rdPick() { rdInput.value = ""; rdInput.click(); }
 function rdRender() {
@@ -4694,7 +4793,7 @@ function rdRender() {
   rd.sig = `${lang}|${dir}|${size}`;
   const privacy = `<p class="rd-privacy">${LOCK}<span>${esc(t.privacy)}</span></p>`;
   const drop = (extra = "") => `<div class="rd-drop" data-drop><div><h2 id="rd-title">${esc(t.title)}</h2><p>${esc(t.intro)}</p>${extra}</div>
-    <button type="button" class="rd-btn" data-pick>${esc(rd.state === "idle" || rd.state === "loading" ? t.pick : t.another)}</button></div>`;
+    <button type="button" class="rd-btn" data-pick>${esc(rd.state === "idle" || rd.state === "loading" || rd.err?.first ? t.pick : t.another)}</button></div>`;
   if (rd.state === "idle") rdBox.innerHTML = drop() + privacy;
   else if (rd.state === "loading") rdBox.innerHTML = drop(`<p class="rd-status" role="status">${esc(t.reading)}</p>`) + privacy;
   else if (rd.state === "error") rdBox.innerHTML = drop() + rdErrHtml(rd.err) + privacy;
@@ -4714,7 +4813,8 @@ function rdChoose(privacy) {
   const first = rd.set.difficulties.find((d) => d.ok);
   rdBox.innerHTML = `<div class="rd-head"><div><div class="eyebrow">${esc(t.title)}</div><h2 id="rd-title">${esc(rdSetTitle(first?.meta))}</h2>
       <p class="rd-meta">${esc(rd.set.name)}</p></div><button type="button" class="rd-btn ghost" data-pick>${esc(t.another)}</button></div>
-    <p class="rd-hint">${esc(t.choose)}</p><ul class="rd-choose"></ul>${privacy}`;
+    <p class="rd-hint">${esc(t.choose)}</p><div data-song hidden></div><ul class="rd-choose"></ul>${privacy}`;
+  rdSongHead();
   const ul = rdBox.querySelector(".rd-choose");
   for (const d of rd.set.difficulties) {
     const li = document.createElement("li");
@@ -4736,6 +4836,7 @@ function rdResult(privacy) {
   const top = rd.busy ? `<p class="rd-status" role="status">${esc(t.reading)}</p>` : rd.notice ? rdErrHtml(rd.notice) + `<p class="rd-note">${esc(t.kept)}</p>` : "";
   rdBox.innerHTML = `${top}<div class="rd-head"><div><div class="eyebrow">${esc(t.title)}</div><h2 id="rd-title">${esc(rdSetTitle(m))}</h2>
       <p class="rd-meta">${esc(facts.join(" · "))}</p></div><button type="button" class="rd-btn ghost" data-pick${rd.busy ? " disabled" : ""}>${esc(t.another)}</button></div>
+    <div data-song hidden></div>
     <div class="row rd-diffs" hidden><span class="lbl">${esc(t.diffs)}</span></div>
     <div class="row rd-sum"><span class="lbl">${esc(t.main)}</span></div>
     <div class="rd-strip"><div class="rd-track" role="group" aria-label="${esc(t.parts)}"></div></div>
@@ -4919,7 +5020,7 @@ function rdPartView() {
   const t = RT(), parts = rd.a.parts;
   const p = parts[rd.index];
   rdLeave();
-  if (!p) { pv.innerHTML = `<p class="rd-hint">${esc(t.pickPart)}</p>`; return; }
+  if (!p) { pv.innerHTML = `<p class="rd-hint">${esc(t.pickPart)}</p>`; rdSongHead(); return; }
   const quiet = p.kind !== "pattern";
   const tent = tentative(p);
   const card = p.main ? byName.get(p.main.card) : null;
@@ -4988,8 +5089,18 @@ function rdPartView() {
     }
     text.append(row);
   }
+  rdPartTail(text);
+  rdSongHead();
+}
+// the part's buttons and notes; redone in place when a song is dropped, so a chart that plays goes on
+function rdPartTail(text = document.querySelector("#rd-part .rd-text")) {
+  const p = rd.a?.parts[rd.index];
+  if (!text || !p) return;
+  for (const x of text.querySelectorAll(":scope > [data-tail]")) x.remove();
+  const t = RT(), quiet = p.kind !== "pattern", card = p.main ? byName.get(p.main.card) : null, chart = rd.chart;
   const acts = document.createElement("div");
   acts.className = "rd-acts";
+  acts.dataset.tail = "";
   if (!quiet && card) {
     const go = document.createElement("button");
     go.type = "button";
@@ -5013,10 +5124,15 @@ function rdPartView() {
   if (chart && !RM.matches) notes.push(t.controls);
   if (chart && !rd.audio) notes.push(rd.audioNote || (rd.set?.kind === "osz" ? "" : t.noMusic));
   if (p.holds?.length) notes.push(t.ln);
-  for (const n of notes.filter(Boolean)) text.insertAdjacentHTML("beforeend", `<p class="rd-note">${esc(n)}</p>`);
+  for (const n of notes.filter(Boolean)) text.insertAdjacentHTML("beforeend", `<p class="rd-note" data-tail>${esc(n)}</p>`);
+  const song = chart ? rdSongHtml() : "";
+  if (song) { text.insertAdjacentHTML("beforeend", song); text.lastElementChild.dataset.tail = ""; }
 }
 
-// ---- the song in sync with the part's chart (here or in the big view): the chart's clock leads, the song follows ----
+// ---- the song in sync with the part's chart (here or in the big view): the song is the clock, the chart follows ----
+// A seek or a play() holds the song's clock for 35-100 ms and more while the browser restarts the sound, so seeking
+// the song after the chart never settles: the song is moved only when the chart jumps by itself (a start, a resume,
+// the loop, another part), and any other gap is taken out of the chart.
 function rdTick() {
   rd.raf = requestAnimationFrame(rdTick);
   if (rd.ps && eng.s !== rd.ps) rdStill(rd.ps); // a scroll or tempo change while stopped respaces the still picture
@@ -5028,16 +5144,114 @@ function rdTick() {
     if (s.bpm.textContent !== txt) s.bpm.textContent = txt;
   }
   const on = el && rd.music && s && rd.chart && s.c === rd.chart && !eng.paused;
-  if (!on) { if (el && !el.paused) el.pause(); return; }
-  let ph = eng.ph;
-  if (ph >= 0) ph %= s.P; // the chart loops; so does the song
-  const want = (rd.chart.t0 + ph * STEP_MS) / 1000;
-  if (want < 0 || want > el.duration) { if (!el.paused) el.pause(); return; }
-  if (el.playbackRate !== tempo) el.playbackRate = tempo;
-  const now = performance.now();
-  if (el.paused) { el.currentTime = want; rd.seekAt = now; el.play().catch(() => {}); return; }
-  if (Math.abs(el.currentTime - want) > 0.1 && now - rd.seekAt > 400) { el.currentTime = want; rd.seekAt = now; }
+  if (!on) { if (el && !el.paused) el.pause(); rd.fol = null; }
 }
+const SYNC_STALL = 25, SYNC_STEADY = 80; // ms: a song clock still this long has stalled; moving this long, it is steady
+// how often this browser moves a playing song's clock: the median of the last gaps between two readings that differ
+const rdCad = { v: [], ms: 0 };
+function rdCadAdd(ms) {
+  rdCad.v.push(ms);
+  if (rdCad.v.length > 15) rdCad.v.shift();
+  // (of the first few gaps the shortest, from three on: a song that starts moves in fits)
+  const v = [...rdCad.v].sort((a, b) => a - b);
+  rdCad.ms = v.length < 3 ? 0 : v.length < 5 ? v[0] : v[(v.length - 1) >> 1];
+}
+// called from frame() after the chart's own step, so it works from where the chart is in this frame
+function rdFollow(now) {
+  const el = rd.audio, s = eng.s;
+  if (!(el && rd.music && s && rd.chart && s.c === rd.chart && !eng.paused)) return;
+  const P = s.P, ups = UPS(), pn = performance.now();
+  // the song jumps back one loop a step or two before the chart's loop point, in the gap after the part's last row,
+  // so its restart is over before the first row comes round again
+  const tail = Math.max(0, Math.min(2, P - s.lastT - 1, rd.chart.t0 / STEP_MS));
+  const k = Math.max(0, Math.floor((eng.ph + tail) / P)); // the loop the song is in
+  const want = (rd.chart.t0 + (eng.ph - k * P) * STEP_MS) / 1000;
+  if (want < 0 || want > el.duration) { if (!el.paused) el.pause(); rd.fol = null; return; } // no song here: the chart runs alone
+  let f = rd.fol;
+  if (el.playbackRate !== tempo) {
+    el.playbackRate = tempo;
+    // the song keeps its old rate for a moment (about 130 ms): the chart goes along with the song until it is seen
+    // running at the new rate
+    if (f) f.rate = { at: pn, ct: f.ct, tc: f.tc };
+  }
+  const fresh = !f || f.s !== s || f.gen !== eng.gen || f.el !== el;
+  if (fresh || k !== f.k || (el.paused && !f.dead && !f.wait && pn - f.at > 1000)) {
+    // the chart moved by itself: the song goes there (a song already close stays, the chart takes its place)
+    const off = Math.abs(el.currentTime - want) / tempo;
+    const go = (!fresh && k !== f.k) || off > (el.paused ? 0.03 : 0.25);
+    if (go) el.currentTime = want;
+    const ct0 = el.currentTime;
+    const g = (f = rd.fol = { s, el, gen: eng.gen, k, at: pn, ct: ct0, ct0, rd: ct0, to: go ? want : null, t: pn, tc: pn, pl: pn, since: 0, last: now,
+      shift: 0, dead: false, wait: false, alone: false, rate: null, soft: 0, ph: eng.ph });
+    if (el.paused) {
+      // the chart waits for a play() that takes its time; a song the browser will not play leaves the chart alone
+      g.wait = true;
+      el.play().then(() => { g.wait = false; g.t = Math.max(g.t, performance.now()); }, () => { g.wait = false; g.dead = true; });
+    }
+  }
+  // is the song's clock moving? It stands still while it restarts, and may creep and stop again before it runs.
+  // Some browsers move currentTime only every 40-100 ms: a clock is stalled only when it stands still well past the
+  // browser's own step (rdCad), or the element itself says so
+  const ct = el.currentTime;
+  const bad = el.seeking || el.paused || el.readyState < 3;
+  const coarse = rdCad.ms > SYNC_STALL;
+  // a reading that creeps a fraction of a millisecond a frame (a song starting) is not running yet
+  const creep = !coarse && ct !== f.ct && ct - (f.rd ?? ct) < ((0.3 * (pn - f.pl)) / 1000) * tempo;
+  f.rd = ct;
+  if (bad) f.since = 0;
+  else if (creep) { f.ct = ct; if (pn - f.t > SYNC_STALL) f.since = 0; }
+  else if (ct !== f.ct) {
+    if (f.pc && pn - f.pc < 400) rdCadAdd(pn - f.pc);
+    // it moved between the last frame and this one: about half a frame ago when it stood still at the last frame
+    f.tc = coarse && f.t < f.pl ? (f.pl + pn) / 2 : pn;
+    if (!f.since) f.since = pn;
+    f.ct = ct; f.t = f.pc = pn; f.to = null;
+  } else if (pn - f.t > (coarse ? rdCad.ms * 1.6 + 10 : SYNC_STALL)) f.since = 0;
+  f.pl = pn;
+  const dt = Math.min(0.1, Math.max(0, (now - f.last) / 1000));
+  f.last = now;
+  // where the song is: where it was sent while it has not moved yet; the reading moved on by the time since it changed
+  // when the browser moves the clock in steps (at most one step on: a song that stalls is no further than that)
+  const sp = f.to ?? (coarse && !bad ? ct + (Math.min(pn - f.tc, rdCad.ms * 1.25) / 1000) * tempo : ct);
+  // where the song puts the chart at this frame's time (a song that moves was a little further on at pn than at now)
+  const to = k * P + (sp * 1000 - rd.chart.t0) / STEP_MS - (f.since ? (Math.max(0, pn - now) / 1000) * ups : 0);
+  const steady = f.since && pn - f.since >= SYNC_STEADY;
+  if (f.rate) {
+    // the song's rate after a tempo change, over 100 ms or more between two of its clock's steps (it is seen
+    // again and again until the song runs at the new rate)
+    const r = f.rate;
+    if (!steady || pn - r.at > 800) f.rate = null;
+    else if (f.tc - r.tc >= Math.max(100, rdCad.ms * 2.5)) {
+      if (Math.abs(((f.ct - r.ct) * 1000) / (f.tc - r.tc) / tempo - 1) < 0.04) f.rate = null;
+      else { r.ct = f.ct; r.tc = f.tc; }
+    }
+    if (!f.rate) f.soft = pn + 1000; // the gap the old rate left closes smoothly
+  }
+  let ph = eng.ph;
+  if (steady && !f.rate) {
+    // a steady song: the chart keeps its own smooth clock and is drawn toward the song; a bigger gap closes at once
+    const d = to - ph;
+    ph = Math.abs(d) / ups > (pn < f.soft ? 0.15 : 0.03) ? to : ph + d * Math.min(1, dt / 0.25);
+  } else if (steady) {
+    // the song is still changing its rate: the chart goes with it, never back
+    ph = Math.max(to, f.ph ?? to);
+  } else if (!f.dead && (f.since || (f.wait && pn - f.at < 3000) || pn - f.t < 600)) {
+    // a song starting or stalled: the chart goes with the song, and waits where it is for a song that fell behind (a
+    // stall seen late, a clock that moves in steps). A song that starts after the chart ran on alone is sent to the
+    // chart instead, so the chart never steps back
+    if (f.alone && f.since) {
+      el.currentTime = want;
+      Object.assign(f, { ct: el.currentTime, ct0: el.currentTime, rd: el.currentTime, to: want, t: pn, since: 0, alone: false });
+    } else ph = Math.max(to, f.ph);
+  } else f.alone = true; // a song that does not start leaves the chart to run alone
+  f.ph = ph;
+  if (ph !== eng.ph) {
+    f.shift += (ph - eng.ph) / ups;
+    eng.ph = ph;
+    if (Math.abs(f.shift) > 0.004) { reclock(); f.shift = 0; }
+  }
+}
+eng.follow = rdFollow;
 
 // ---- to a card and back ----
 function rdGo(cardEn, variant = null, showFamId = null) {
@@ -5091,8 +5305,9 @@ function rdSync() {
 if (READER) {
   reader.hidden = false;
   rdOpenB.hidden = false;
-  if (!window.matchMedia("(pointer: coarse)").matches) rdInput.accept = ".osu,.osz";
-  rdInput.addEventListener("change", () => { const f = rdInput.files?.[0]; if (f) rdFile(f); });
+  if (!window.matchMedia("(pointer: coarse)").matches) rdInput.accept = `.osu,.osz,${RD_SONG.map((x) => `.${x}`).join(",")}`;
+  rdInput.multiple = true; // a map and its song together
+  rdInput.addEventListener("change", () => rdFiles(rdInput.files));
   rdOpenB.addEventListener("click", () => {
     reader.scrollIntoView({ behavior: RM.matches ? "auto" : "smooth", block: "start" });
     if ((rd.state === "idle" || rd.state === "error") && !rd.busy) rdPick();
@@ -5112,11 +5327,9 @@ if (READER) {
     if (!hasFiles(e)) return;
     e.preventDefault();
     reader.classList.remove("drag");
-    if (dlg.open) return;
-    const f = e.dataTransfer.files?.[0];
-    if (!f) return;
+    if (dlg.open || !e.dataTransfer.files?.length) return;
     if (!reader.contains(e.target)) reader.scrollIntoView({ behavior: RM.matches ? "auto" : "smooth", block: "start" });
-    rdFile(f);
+    rdFiles(e.dataTransfer.files);
   });
   document.addEventListener("keydown", (e) => {
     if (e.code !== "ArrowLeft" && e.code !== "ArrowRight") return;
